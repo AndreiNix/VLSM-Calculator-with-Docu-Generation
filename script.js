@@ -262,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (numUsers > 0) {
             const usersPerSubnet = Math.ceil(numUsers / subnets.length);
             let globalUserCount = 0;
+            let subnetDebugInfo = [];
             
             for (let subnetIndex = 0; subnetIndex < subnets.length && globalUserCount < numUsers; subnetIndex++) {
                 const subnet = subnets[subnetIndex];
@@ -291,12 +292,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 endusersContainer.appendChild(subnetTableDiv);
 
                 const tbody = subnetTableDiv.querySelector('tbody');
+                let pcCountInSubnet = 0;
 
                 // Parse the first usable IP
                 const firstIP = subnet.firstUsable.split('.').map(Number);
                 
                 for (let i = 0; i < usersInThisSubnet; i++) {
                     globalUserCount++;
+                    pcCountInSubnet++;
                     
                     // Calculate IP address for this user
                     let currentIP = [...firstIP];
@@ -328,11 +331,47 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                     tbody.appendChild(row);
                 }
+                
+                // Store debug info for this subnet
+                subnetDebugInfo.push({
+                    name: subnet.name,
+                    pcCount: pcCountInSubnet
+                });
             }
+            
+            // Display debug information
+            displayDebugInfo(globalUserCount, subnets.length, subnetDebugInfo);
         }
 
         // Show documentation section
         document.getElementById('documentation-section').style.display = 'block';
+    }
+    
+    function displayDebugInfo(totalPCs, totalSubnets, subnetInfo) {
+        const debugDiv = document.getElementById('debug-info');
+        
+        let subnetDetails = subnetInfo.map(info => 
+            `<div class="subnet-debug"><strong>${info.name}:</strong> ${info.pcCount} PCs</div>`
+        ).join('');
+        
+        debugDiv.innerHTML = `
+            <h4>📊 Debug Information</h4>
+            <div class="debug-stats">
+                <div class="debug-stat">
+                    <div class="debug-stat-label">Total PCs Generated</div>
+                    <div class="debug-stat-value">${totalPCs}</div>
+                </div>
+                <div class="debug-stat">
+                    <div class="debug-stat-label">Total Subnets</div>
+                    <div class="debug-stat-value">${totalSubnets}</div>
+                </div>
+                <div class="debug-stat">
+                    <div class="debug-stat-label">Avg PCs per Subnet</div>
+                    <div class="debug-stat-value">${Math.round(totalPCs / totalSubnets)}</div>
+                </div>
+            </div>
+            ${subnetDetails}
+        `;
     }
 
     // Export to Excel functionality
