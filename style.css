@@ -878,3 +878,94 @@ input[type="number"]:focus {
     font-size: 0.9em;
     color: #92400e;
 }
+
+
+/* Subnet Tabs Styling */
+.subnet-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 0;
+    border-bottom: 3px solid #6366f1;
+    padding-bottom: 10px;
+}
+
+.subnet-tab {
+    padding: 12px 24px;
+    background: #e8eaf6;
+    color: #5a5a6e;
+    border: 2px solid #d1d5db;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    transition: all 0.3s;
+    position: relative;
+    bottom: -3px;
+}
+
+.subnet-tab:hover {
+    background: #ddd6fe;
+    color: #4f46e5;
+}
+
+.subnet-tab.active {
+    background: #6366f1;
+    color: white;
+    border-color: #6366f1;
+    box-shadow: 0 -2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.subnet-tabs-content {
+    position: relative;
+    min-height: 300px;
+}
+
+.subnet-tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.subnet-tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive tabs */
+@media (max-width: 768px) {
+    .subnet-tabs {
+        gap: 5px;
+    }
+    
+    .subnet-tab {
+        padding: 10px 16px;
+        font-size: 0.9em;
+    }
+}
+
+@media (max-width: 576px) {
+    .subnet-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 8px;
+    }
+    
+    .subnet-tab {
+        padding: 8px 12px;
+        font-size: 0.85em;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+}

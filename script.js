@@ -264,32 +264,52 @@ document.addEventListener('DOMContentLoaded', () => {
             let globalUserCount = 0;
             let subnetDebugInfo = [];
             
+            // Create tabs container
+            const tabsContainer = document.createElement('div');
+            tabsContainer.className = 'subnet-tabs';
+            endusersContainer.appendChild(tabsContainer);
+            
+            // Create content container
+            const contentContainer = document.createElement('div');
+            contentContainer.className = 'subnet-tabs-content';
+            endusersContainer.appendChild(contentContainer);
+            
             for (let subnetIndex = 0; subnetIndex < subnets.length && globalUserCount < numUsers; subnetIndex++) {
                 const subnet = subnets[subnetIndex];
                 const usersInThisSubnet = Math.min(usersPerSubnet, numUsers - globalUserCount);
 
+                // Create tab button
+                const tabButton = document.createElement('button');
+                tabButton.className = 'subnet-tab' + (subnetIndex === 0 ? ' active' : '');
+                tabButton.textContent = subnet.name;
+                tabButton.dataset.subnetIndex = subnetIndex;
+                tabsContainer.appendChild(tabButton);
+
                 // Create a separate table for this subnet
                 const subnetTableDiv = document.createElement('div');
-                subnetTableDiv.className = 'subnet-enduser-table';
+                subnetTableDiv.className = 'subnet-tab-content' + (subnetIndex === 0 ? ' active' : '');
+                subnetTableDiv.dataset.subnetIndex = subnetIndex;
                 subnetTableDiv.innerHTML = `
-                    <h4>${subnet.name}</h4>
-                    <table class="doc-table">
-                        <thead>
-                            <tr>
-                                <th>Device Name</th>
-                                <th>IPv4 Address</th>
-                                <th>Subnet Mask</th>
-                                <th>IPv4 Default Gateway</th>
-                                <th>IPv4 DNS Server</th>
-                                <th>IPv6 Address</th>
-                                <th>IPv6 Default Gateway</th>
-                                <th>IPv6 DNS Server</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                    <div class="subnet-enduser-table">
+                        <h4>${subnet.name} - ${usersInThisSubnet} PCs</h4>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>Device Name</th>
+                                    <th>IPv4 Address</th>
+                                    <th>Subnet Mask</th>
+                                    <th>IPv4 Default Gateway</th>
+                                    <th>IPv4 DNS Server</th>
+                                    <th>IPv6 Address</th>
+                                    <th>IPv6 Default Gateway</th>
+                                    <th>IPv6 DNS Server</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 `;
-                endusersContainer.appendChild(subnetTableDiv);
+                contentContainer.appendChild(subnetTableDiv);
 
                 const tbody = subnetTableDiv.querySelector('tbody');
                 let pcCountInSubnet = 0;
@@ -338,6 +358,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     pcCount: pcCountInSubnet
                 });
             }
+            
+            // Add tab click handlers
+            const tabButtons = tabsContainer.querySelectorAll('.subnet-tab');
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetIndex = button.dataset.subnetIndex;
+                    
+                    // Remove active class from all tabs and contents
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    contentContainer.querySelectorAll('.subnet-tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    // Add active class to clicked tab and corresponding content
+                    button.classList.add('active');
+                    contentContainer.querySelector(`[data-subnet-index="${targetIndex}"]`).classList.add('active');
+                });
+            });
             
             // Display debug information
             displayDebugInfo(globalUserCount, subnets.length, subnetDebugInfo);
@@ -454,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         subnetTables.forEach((subnetDiv, index) => {
             const table = subnetDiv.querySelector('table');
-            const subnetName = subnetDiv.querySelector('h4').textContent;
+            const subnetName = subnetDiv.querySelector('h4').textContent.split(' - ')[0]; // Remove PC count from name
             const ws = XLSX.utils.table_to_sheet(table);
             styleWorksheet(ws);
             XLSX.utils.book_append_sheet(wb, ws, `${subnetName}-Users`);
