@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VLSM Calculator - Cisco Packet Tracer</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="main-content">
+      <div class="container">
+        <header>
+          <h1>VLSM Calculator</h1>
+          <p class="subtitle">
+            Variable Length Subnet Mask Calculator for Cisco Packet Tracer
+          </p>
+        </header>
+
+        <div class="input-section">
+          <div class="ip-input">
+            <label for="network-ip">Network IP Address:</label>
+            <input
+              type="text"
+              id="network-ip"
+              placeholder="192.168.1.0"
+              value="192.168.1.0"
+            />
+          </div>
+
+          <div class="cidr-input">
+            <label for="cidr">CIDR Prefix:</label>
+            <input type="number" id="cidr" min="8" max="30" value="24" />
+          </div>
+        </div>
+
+        <div class="users-card">
+          <label for="num-users">Number of Users:</label>
+          <input
+            type="number"
+            id="num-users"
+            min="1"
+            placeholder="Enter number of users"
+            value=""
+          />
+          <p class="users-info">
+            This will calculate the required hosts (users + network + broadcast
+            addresses)
+          </p>
+        </div>
+
+        <div class="subnets-section">
+          <label for="subnet-count">Subnets</label>
+          <div class="subnets-control">
+            <input type="number" id="subnet-count" min="1" max="50" value="2" />
+            <button id="apply-subnets" class="btn-apply">Apply</button>
+            <button id="add-one-subnet" class="btn-add-one">+ Add 1</button>
+          </div>
+        </div>
+
+        <div class="subnet-fields">
+          <div class="subnet-columns">
+            <div class="column">
+              <h3>Subnet names</h3>
+              <div id="subnet-names-container"></div>
+            </div>
+            <div class="column">
+              <h3>Number of hosts</h3>
+              <div id="host-counts-container"></div>
+            </div>
+          </div>
+        </div>
+
+        <button id="calculate" class="btn-calculate">Generate Subnets</button>
+
+        <div id="results" class="results"></div>
+
+        <div
+          id="documentation-section"
+          class="documentation-section"
+          style="display: none"
+        >
+          <h2>Cisco Packet Tracer Documentation</h2>
+          <button id="export-excel" class="btn-export">Export to Excel</button>
+
+          <div class="doc-table-container">
+            <h3>ROUTERS</h3>
+            <table class="doc-table" id="routers-table">
+              <thead>
+                <tr>
+                  <th>Device Name</th>
+                  <th>Interface</th>
+                  <th>IPv4 Address</th>
+                  <th>Subnet Mask</th>
+                  <th>IPv4 Default Gateway</th>
+                  <th>IPv6 Address</th>
+                  <th>IPv6 Default Gateway</th>
+                  <th>Routing</th>
+                </tr>
+              </thead>
+              <tbody id="routers-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="doc-table-container">
+            <h3>SWITCHES</h3>
+            <table class="doc-table" id="switches-table">
+              <thead>
+                <tr>
+                  <th>Device Name</th>
+                  <th>Interface</th>
+                  <th>VLAN</th>
+                  <th>Access (Yes/No)</th>
+                  <th>Trunk (Yes/No)</th>
+                  <th>Native Vlan</th>
+                  <th>IPv4 Address</th>
+                  <th>IPv4 Default Gateway</th>
+                </tr>
+              </thead>
+              <tbody id="switches-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="doc-table-container">
+            <h3>END-USERS</h3>
+            <div id="endusers-container"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-panel">
+        <h2>DNS Configuration</h2>
+        
+        <div class="side-input-group">
+            <label for="ipv4-dns">IPv4 DNS Server</label>
+            <input type="text" id="ipv4-dns" placeholder="Your Preference" />
+            <button id="set-ipv4-dns" class="btn-set-dns">Set DNS Server</button>
+        </div>
+
+        <!-- <div class="side-input-group">
+            <label for="ipv6-dns">IPv6 DNS Server</label>
+            <input type="text" id="ipv6-dns" placeholder="Enter Own" />
+            <button id="set-ipv6-dns" class="btn-set-dns">Set IPv6</button>
+        </div> -->
+
+     
+    </div>
+
+    <script src="script.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  </body>
+</html>
