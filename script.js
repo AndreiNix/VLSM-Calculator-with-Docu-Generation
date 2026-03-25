@@ -157,6 +157,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     calculateBtn.addEventListener('click', () => {
+        // Validate that DNS and IPv6 settings are configured
+        if (!settingsConfigured) {
+            alert('⚠️ Please configure DNS and IPv6 settings first!\n\nYou must set at least one of the following:\n- IPv4 DNS Server\n- IPv6 DNS Server\n- IPv6 Address\n\nUse the side panel to configure these settings.');
+            return;
+        }
+        
         const networkIP = document.getElementById('network-ip').value.trim();
         const cidr = parseInt(document.getElementById('cidr').value);
 
@@ -507,13 +513,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // DNS Configuration
 let ipv4DNS = '';
 let ipv6DNS = '';
+let ipv6Address = '';
 let dnsChanged = false;
+let settingsConfigured = false;
 
 document.getElementById('set-ipv4-dns').addEventListener('click', () => {
     const value = document.getElementById('ipv4-dns').value.trim();
     if (value) {
         ipv4DNS = value;
         dnsChanged = true;
+        settingsConfigured = true;
         
         // Show success indicator
         const btn = document.getElementById('set-ipv4-dns');
@@ -537,10 +546,11 @@ document.getElementById('set-ipv6-dns').addEventListener('click', () => {
     if (value) {
         ipv6DNS = value;
         dnsChanged = true;
+        settingsConfigured = true;
         
         // Show success indicator
         const btn = document.getElementById('set-ipv6-dns');
-        btn.textContent = '✓ IPv6 Set';
+        btn.textContent = '✓ IPv6 DNS Set';
         btn.style.background = '#10b981';
         
         // Show regenerate message
@@ -552,6 +562,30 @@ document.getElementById('set-ipv6-dns').addEventListener('click', () => {
         }, 2000);
     } else {
         alert('Please enter an IPv6 DNS server address.');
+    }
+});
+
+document.getElementById('set-ipv6-address').addEventListener('click', () => {
+    const value = document.getElementById('ipv6-address-input').value.trim();
+    if (value) {
+        ipv6Address = value;
+        dnsChanged = true;
+        settingsConfigured = true;
+        
+        // Show success indicator
+        const btn = document.getElementById('set-ipv6-address');
+        btn.textContent = '✓ IPv6 Address Set';
+        btn.style.background = '#10b981';
+        
+        // Show regenerate message
+        showRegenerateMessage();
+        
+        setTimeout(() => {
+            btn.textContent = 'Set IPv6 Address';
+            btn.style.background = '';
+        }, 2000);
+    } else {
+        alert('Please enter an IPv6 address.');
     }
 });
 
