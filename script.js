@@ -157,12 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     calculateBtn.addEventListener('click', () => {
-        // Validate that DNS and IPv6 settings are configured
-        if (!settingsConfigured) {
-            alert('⚠️ Please configure DNS and IPv6 settings first!\n\nYou must set at least one of the following:\n- IPv4 DNS Server\n- IPv6 DNS Server\n- IPv6 Address\n\nUse the side panel to configure these settings.');
-            return;
-        }
-        
         const networkIP = document.getElementById('network-ip').value.trim();
         const cidr = parseInt(document.getElementById('cidr').value);
 
@@ -232,12 +226,40 @@ document.addEventListener('DOMContentLoaded', () => {
         switchesTbody.innerHTML = '';
         endusersContainer.innerHTML = '';
 
-        // Generate router entries (one per subnet)
+            // Generate router entries (one per subnet)
+        const interfaceGroups = getInterfaceGroups();
+        let currentGroupIndex = 0;
+        let vlansInCurrentGroup = 0;
+        let vlanId = 10; // Start VLAN IDs from 10
+        
         subnets.forEach((subnet, index) => {
+            // Check if we need to move to the next interface group
+            if (currentGroupIndex < interfaceGroups.length) {
+                const currentGroup = interfaceGroups[currentGroupIndex];
+                
+                if (vlansInCurrentGroup >= currentGroup.vlanCount) {
+                    currentGroupIndex++;
+                    vlansInCurrentGroup = 0;
+                    vlanId = 10; // Reset VLAN ID for new interface (optional, can be removed if you want continuous VLAN IDs)
+                }
+            }
+            
+            // Determine interface name
+            let interfaceName;
+            if (currentGroupIndex < interfaceGroups.length) {
+                const currentGroup = interfaceGroups[currentGroupIndex];
+                interfaceName = `${currentGroup.interface}.${vlanId}`;
+                vlansInCurrentGroup++;
+                vlanId++;
+            } else {
+                // Fallback if more subnets than configured interfaces
+                interfaceName = `G0/${index}`;
+            }
+            
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>Router${index + 1}</td>
-                <td>G0/${index}</td>
+                <td>Router1</td>
+                <td>${interfaceName}</td>
                 <td>${subnet.lastUsable}</td>
                 <td>${subnet.subnetMask}</td>
                 <td>${subnet.lastUsable}</td>
@@ -250,11 +272,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Generate switch entries (one per subnet)
         subnets.forEach((subnet, index) => {
+            const vlanId = index + 10; // Start VLAN IDs from 10
+            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>Switch${index + 1}</td>
                 <td>F0/1</td>
-                <td>${index + 1}</td>
+                <td>${vlanId}</td>
                 <td>Yes</td>
                 <td>No</td>
                 <td>1</td>
@@ -516,6 +540,59 @@ let ipv6DNS = '';
 let ipv6Address = '';
 let dnsChanged = false;
 let settingsConfigured = false;
+
+// Interface Groups Management
+let interfaceGroups = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Add initial interface group
+    addInterfaceGroup();
+    
+    document.getElementById('add-interface-group').addEventListener('click', addInterfaceGroup);
+});
+
+function addInterfaceGroup() {
+    const container = document.getElementById('interface-groups-container');
+    const groupIndex = interfaceGroups.length;
+    
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'interface-group';
+    groupDiv.dataset.index = groupIndex;
+    groupDiv.innerHTML = `
+        <div class="interface-group-inputs">
+            <input type="text" class="interface-name" placeholder="G0/0" value="G0/${groupIndex}" />
+            <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="1" />
+            <button class="btn-remove-interface" onclick="removeInterfaceGroup(${groupIndex})">×</button>
+        </div>
+    `;
+    
+    container.appendChild(groupDiv);
+    interfaceGroups.push({ interface: `G0/${groupIndex}`, vlanCount: 1 });
+}
+
+function removeInterfaceGroup(index) {
+    const groupDiv = document.querySelector(`[data-index="${index}"]`);
+    if (groupDiv) {
+        groupDiv.remove();
+        interfaceGroups[index] = null; // Mark as removed
+    }
+}
+
+function getInterfaceGroups() {
+    const groups = [];
+    const groupDivs = document.querySelectorAll('.interface-group');
+    
+    groupDivs.forEach(div => {
+        const interfaceName = div.querySelector('.interface-name').value.trim();
+        const vlanCount = parseInt(div.querySelector('.vlan-count').value) || 1;
+        
+        if (interfaceName && vlanCount > 0) {
+            groups.push({ interface: interfaceName, vlanCount: vlanCount });
+        }
+    });
+    
+    return groups;
+}
 
 document.getElementById('set-ipv4-dns').addEventListener('click', () => {
     const value = document.getElementById('ipv4-dns').value.trim();

@@ -976,3 +976,91 @@ input[type="number"]:focus {
     padding-top: 20px;
     border-top: 2px solid #e5e7eb;
 }
+
+
+.info-text {
+    font-size: 0.85em;
+    color: #6b7280;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+.side-input-group label input[type="checkbox"] {
+    width: auto;
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.side-input-group label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+/* Interface Groups Styling */
+.interface-group {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.interface-group-inputs {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.interface-group-inputs .interface-name {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.interface-group-inputs .vlan-count {
+    width: 80px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.btn-remove-interface {
+    width: 32px;
+    height: 32px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s;
+}
+
+.btn-remove-interface:hover {
+    background: #dc2626;
+}
+
+.btn-add-interface {
+    width: 100%;
+    padding: 12px;
+    background: #6366f1;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+    margin-bottom: 20px;
+}
+
+.btn-add-interface:hover {
+    background: #4f46e5;
+}

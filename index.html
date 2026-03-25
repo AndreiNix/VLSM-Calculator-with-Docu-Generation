@@ -130,6 +130,18 @@
     </div>
 
     <div class="side-panel">
+      <h2>Router Interface Configuration</h2>
+
+      <div class="side-input-group">
+        <p class="info-text">Define which interface handles which VLANs (e.g., G0/0 handles 3 VLANs, G0/1 handles 2 VLANs)</p>
+      </div>
+
+      <div id="interface-groups-container">
+        <!-- Interface groups will be dynamically added here -->
+      </div>
+
+      <button id="add-interface-group" class="btn-add-interface">+ Add Interface Group</button>
+
       <h2>DNS Configuration</h2>
 
       <div class="side-input-group">
@@ -148,8 +160,14 @@
 
       <div class="side-input-group">
         <label for="ipv6-address-input">IPv6 Address</label>
-        <input type="text" id="ipv6-address-input" placeholder="Your Desired Address" />
-        <button id="set-ipv6-address" class="btn-set-dns">Set IPv6 Address</button>
+        <input
+          type="text"
+          id="ipv6-address-input"
+          placeholder="Your Desired Address"
+        />
+        <button id="set-ipv6-address" class="btn-set-dns">
+          Set IPv6 Address
+        </button>
       </div>
     </div>
 
