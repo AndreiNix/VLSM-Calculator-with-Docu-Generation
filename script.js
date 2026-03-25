@@ -339,14 +339,74 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('export-excel').addEventListener('click', () => {
         const wb = XLSX.utils.book_new();
 
+        // Function to add borders and styling to worksheet
+        function styleWorksheet(ws, rowCount, colCount) {
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            
+            // Auto-width columns
+            const colWidths = [];
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                let maxWidth = 10;
+                for (let R = range.s.r; R <= range.e.r; ++R) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                    const cell = ws[cellAddress];
+                    if (cell && cell.v) {
+                        const cellLength = cell.v.toString().length;
+                        maxWidth = Math.max(maxWidth, cellLength + 2);
+                    }
+                }
+                colWidths.push({ wch: Math.min(maxWidth, 50) });
+            }
+            ws['!cols'] = colWidths;
+
+            // Add borders to all cells
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!ws[cellAddress]) {
+                        ws[cellAddress] = { t: 's', v: '' };
+                    }
+                    
+                    if (!ws[cellAddress].s) {
+                        ws[cellAddress].s = {};
+                    }
+                    
+                    // Add borders
+                    ws[cellAddress].s.border = {
+                        top: { style: 'thin', color: { rgb: '000000' } },
+                        bottom: { style: 'thin', color: { rgb: '000000' } },
+                        left: { style: 'thin', color: { rgb: '000000' } },
+                        right: { style: 'thin', color: { rgb: '000000' } }
+                    };
+                    
+                    // Style header row
+                    if (R === 0) {
+                        ws[cellAddress].s.fill = {
+                            fgColor: { rgb: '6366F1' }
+                        };
+                        ws[cellAddress].s.font = {
+                            bold: true,
+                            color: { rgb: 'FFFFFF' }
+                        };
+                        ws[cellAddress].s.alignment = {
+                            horizontal: 'center',
+                            vertical: 'center'
+                        };
+                    }
+                }
+            }
+        }
+
         // Export Routers table
         const routersTable = document.getElementById('routers-table');
         const routersWS = XLSX.utils.table_to_sheet(routersTable);
+        styleWorksheet(routersWS);
         XLSX.utils.book_append_sheet(wb, routersWS, 'Routers');
 
         // Export Switches table
         const switchesTable = document.getElementById('switches-table');
         const switchesWS = XLSX.utils.table_to_sheet(switchesTable);
+        styleWorksheet(switchesWS);
         XLSX.utils.book_append_sheet(wb, switchesWS, 'Switches');
 
         // Export each subnet's end-users table as a separate sheet
@@ -357,6 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const table = subnetDiv.querySelector('table');
             const subnetName = subnetDiv.querySelector('h4').textContent;
             const ws = XLSX.utils.table_to_sheet(table);
+            styleWorksheet(ws);
             XLSX.utils.book_append_sheet(wb, ws, `${subnetName}-Users`);
         });
 
