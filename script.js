@@ -326,13 +326,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function generateDocumentationTables(subnets) {
         const routersTbody = document.getElementById('routers-tbody');
-        const switchesAccessTbody = document.getElementById('switches-access-tbody');
+        const switchesAccessContainer = document.getElementById('switches-access-container');
         const switchesDistTbody = document.getElementById('switches-dist-tbody');
         const endusersContainer = document.getElementById('endusers-container');
 
         // Clear existing content
         routersTbody.innerHTML = '';
-        switchesAccessTbody.innerHTML = '';
+        switchesAccessContainer.innerHTML = '';
         switchesDistTbody.innerHTML = '';
         endusersContainer.innerHTML = '';
 
@@ -652,10 +652,77 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         const accessSwitchIPStr = accessSwitchIP.join('.');
                         
-                        // Add g0/1 row (trunk to distribution) - VLAN 99, no IP
-                        const accessTrunkRow = document.createElement('tr');
-                        accessTrunkRow.innerHTML = `
-                            <td>${accessSwitchName}</td>
+                        // Store access switch data for tab organization
+                        if (!vlanInfo.accessSwitches) {
+                            vlanInfo.accessSwitches = [];
+                        }
+                        vlanInfo.accessSwitches.push({
+                            name: accessSwitchName,
+                            ip: accessSwitchIPStr,
+                            vlanId: vlanInfo.vlanId,
+                            gateway: vlanInfo.subnet.lastUsable
+                        });
+                    }
+                });
+            });
+        });
+        
+        // Create tabs for switches access section
+        const switchesAccessTabsContainer = document.createElement('div');
+        switchesAccessTabsContainer.className = 'subnet-tabs';
+        switchesAccessContainer.appendChild(switchesAccessTabsContainer);
+        
+        const switchesAccessContentContainer = document.createElement('div');
+        switchesAccessContentContainer.className = 'subnet-tabs-content';
+        switchesAccessContainer.appendChild(switchesAccessContentContainer);
+        
+        // Generate tabs for each VLAN
+        redistributedRouterInterfaces.forEach((routerInterfaceData) => {
+            routerInterfaceData.vlans.forEach((vlanInfo, vlanIndex) => {
+                const isFirst = routerInterfaceData === redistributedRouterInterfaces[0] && vlanIndex === 0;
+                
+                // Create tab button
+                const tabButton = document.createElement('button');
+                tabButton.className = 'subnet-tab' + (isFirst ? ' active' : '');
+                tabButton.textContent = vlanInfo.subnet.name;
+                tabButton.dataset.vlanId = vlanInfo.vlanId;
+                switchesAccessTabsContainer.appendChild(tabButton);
+                
+                // Create tab content
+                const tabContent = document.createElement('div');
+                tabContent.className = 'subnet-tab-content' + (isFirst ? ' active' : '');
+                tabContent.dataset.vlanId = vlanInfo.vlanId;
+                tabContent.innerHTML = `
+                    <div class="subnet-enduser-table">
+                        <h4>${vlanInfo.subnet.name} - VLAN ${vlanInfo.vlanId}</h4>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>Device Name</th>
+                                    <th>Interface</th>
+                                    <th>VLAN</th>
+                                    <th>Access (Yes/No)</th>
+                                    <th>Trunk (Yes/No)</th>
+                                    <th>Native Vlan</th>
+                                    <th>IPv4 Address</th>
+                                    <th>IPv4 Default Gateway</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                `;
+                switchesAccessContentContainer.appendChild(tabContent);
+                
+                const tbody = tabContent.querySelector('tbody');
+                
+                // Add access switches for this VLAN
+                if (vlanInfo.accessSwitches) {
+                    vlanInfo.accessSwitches.forEach((accessSwitch) => {
+                        // Add g0/1 row (trunk to distribution)
+                        const trunkRow = document.createElement('tr');
+                        trunkRow.innerHTML = `
+                            <td>${accessSwitch.name}</td>
                             <td>g0/1</td>
                             <td>99</td>
                             <td>No</td>
@@ -664,23 +731,41 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td></td>
                             <td></td>
                         `;
-                        switchesAccessTbody.appendChild(accessTrunkRow);
+                        tbody.appendChild(trunkRow);
                         
-                        // Add FastEthernet ports row - assigned VLAN, access mode, with IP
-                        const accessFaRow = document.createElement('tr');
-                        accessFaRow.innerHTML = `
+                        // Add fa0/1-24 row (access ports)
+                        const accessRow = document.createElement('tr');
+                        accessRow.innerHTML = `
                             <td></td>
                             <td>fa0/1-24</td>
-                            <td>${vlanInfo.vlanId}</td>
+                            <td>${accessSwitch.vlanId}</td>
                             <td>Yes</td>
                             <td>No</td>
                             <td></td>
-                            <td>${accessSwitchIPStr}</td>
-                            <td>${vlanInfo.subnet.lastUsable}</td>
+                            <td>${accessSwitch.ip}</td>
+                            <td>${accessSwitch.gateway}</td>
                         `;
-                        switchesAccessTbody.appendChild(accessFaRow);
-                    }
+                        tbody.appendChild(accessRow);
+                    });
+                }
+            });
+        });
+        
+        // Add tab click handlers for switches access
+        const switchesAccessTabButtons = switchesAccessTabsContainer.querySelectorAll('.subnet-tab');
+        switchesAccessTabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetVlanId = button.dataset.vlanId;
+                
+                // Remove active class from all tabs and contents
+                switchesAccessTabButtons.forEach(btn => btn.classList.remove('active'));
+                switchesAccessContentContainer.querySelectorAll('.subnet-tab-content').forEach(content => {
+                    content.classList.remove('active');
                 });
+                
+                // Add active class to clicked tab and corresponding content
+                button.classList.add('active');
+                switchesAccessContentContainer.querySelector(`[data-vlan-id="${targetVlanId}"]`).classList.add('active');
             });
         });
 
@@ -818,14 +903,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const debugDiv = document.getElementById('debug-info');
         
         let subnetDetails = subnetInfo.map(info => 
-            `<div class="subnet-debug"><strong>${info.name}:</strong> ${info.pcCount} PCs</div>`
+            `<span class="subnet-debug"><strong>${info.name}</strong> ${info.pcCount} PCs</span>`
         ).join('');
         
         debugDiv.innerHTML = `
-            <h4>📊 Debug Information</h4>
+            <h4>📊 Network Summary</h4>
             <div class="debug-stats">
                 <div class="debug-stat">
-                    <div class="debug-stat-label">Total PCs Generated</div>
+                    <div class="debug-stat-label">Total Devices</div>
                     <div class="debug-stat-value">${totalPCs}</div>
                 </div>
                 <div class="debug-stat">
@@ -833,11 +918,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="debug-stat-value">${totalSubnets}</div>
                 </div>
                 <div class="debug-stat">
-                    <div class="debug-stat-label">Avg PCs per Subnet</div>
+                    <div class="debug-stat-label">Average per Subnet</div>
                     <div class="debug-stat-value">${Math.round(totalPCs / totalSubnets)}</div>
                 </div>
             </div>
-            ${subnetDetails}
+            <div class="subnet-debug-container">${subnetDetails}</div>
         `;
     }
 
