@@ -33,21 +33,6 @@
           </div>
         </div>
 
-        <div class="users-card">
-          <label for="num-users">Number of Users:</label>
-          <input
-            type="number"
-            id="num-users"
-            min="1"
-            placeholder="Enter number of users"
-            value=""
-          />
-          <p class="users-info">
-            This will calculate the required hosts (users + network + broadcast
-            addresses)
-          </p>
-        </div>
-
         <div class="subnets-section">
           <label for="subnet-count">Subnets</label>
           <div class="subnets-control">
@@ -60,7 +45,7 @@
         <div class="subnet-fields">
           <div class="subnet-columns">
             <div class="column">
-              <h3>Subnet names</h3>
+              <h3>VLAN names</h3>
               <div id="subnet-names-container"></div>
             </div>
             <div class="column">
@@ -70,6 +55,7 @@
           </div>
         </div>
 
+        <button id="debug-autofill" class="btn-debug">🐛 Debug Autofill</button>
         <button id="calculate" class="btn-calculate">Generate Subnets</button>
 
         <div id="results" class="results"></div>
@@ -89,6 +75,7 @@
               <thead>
                 <tr>
                   <th>VLAN</th>
+                  <th>VLAN Name</th>
                   <th>Interface</th>
                   <th>IPv4 Address</th>
                   <th>Subnet Mask</th>
@@ -174,19 +161,28 @@
       </div>
 
       <div class="tab-content" id="ipv6-config">
-        <h2>IPv6 Address</h2>
+        <h2>IPv6 Configuration</h2>
 
         <div class="side-input-group">
-          <label for="ipv6-address-input">IPv6 Address</label>
+          <label for="ipv6-prefix">IPv6 Prefix</label>
           <input
             type="text"
-            id="ipv6-address-input"
-            placeholder="Your Desired Address"
+            id="ipv6-prefix"
+            placeholder="e.g., FD00 or 2001:DB8"
           />
-          <button id="set-ipv6-address" class="btn-set-dns">
-            Set IPv6 Address
-          </button>
+          <p class="info-text">Base IPv6 prefix (will auto-generate per VLAN)</p>
         </div>
+
+        <div class="side-input-group">
+          <label for="ipv6-format">IPv6 Format</label>
+          <select id="ipv6-format">
+            <option value="vlan-pattern">VLAN Pattern (FD00:10:10:10::1/64)</option>
+            <option value="sequential">Sequential (FD00::10:1/64)</option>
+          </select>
+          <p class="info-text">How to generate IPv6 addresses from VLAN IDs</p>
+        </div>
+
+        <button id="generate-ipv6" class="btn-set-dns">Generate IPv6 Addresses</button>
       </div>
     </div>
 

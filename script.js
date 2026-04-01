@@ -120,6 +120,44 @@ document.addEventListener('DOMContentLoaded', () => {
     // Generate initial subnet fields
     generateSubnetFields(2);
 
+    // Debug autofill button
+    document.getElementById('debug-autofill').addEventListener('click', () => {
+        // Set subnet count to 6
+        subnetCountInput.value = 6;
+        
+        // Generate 6 subnet fields
+        generateSubnetFields(6);
+        
+        // Fill in subnet names and host counts
+        const testData = [
+            { name: 'isyn', hosts: 100 },
+            { name: 'mba', hosts: 100 },
+            { name: 'rbv', hosts: 100 },
+            { name: 'coop', hosts: 100 },
+            { name: 'hr', hosts: 100 },
+            { name: 'server', hosts: 16 }
+        ];
+        
+        const nameInputs = document.querySelectorAll('.subnet-name-input');
+        const hostInputs = document.querySelectorAll('.host-count-input');
+        
+        testData.forEach((data, index) => {
+            if (nameInputs[index]) nameInputs[index].value = data.name;
+            if (hostInputs[index]) hostInputs[index].value = data.hosts;
+        });
+        
+        // Show success message
+        const btn = document.getElementById('debug-autofill');
+        const originalText = btn.textContent;
+        btn.textContent = '✓ Autofilled!';
+        btn.style.background = '#10b981';
+        
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = '';
+        }, 2000);
+    });
+
     applySubnetsBtn.addEventListener('click', () => {
         const count = parseInt(subnetCountInput.value) || 1;
         generateSubnetFields(count);
@@ -216,7 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function generateDocumentationTables(subnets) {
-        const numUsers = parseInt(document.getElementById('num-users').value) || 0;
         const routersTbody = document.getElementById('routers-tbody');
         const switchesTbody = document.getElementById('switches-tbody');
         const endusersContainer = document.getElementById('endusers-container');
@@ -234,6 +271,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let subnetIndex = 0;
         let currentVlanId = startingVlan;
         
+        // Store VLAN to IPv6 mapping for end-users
+        const vlanToIPv6Map = {};
+        
         interfaceGroups.forEach((group, groupIndex) => {
             let vlansOnThisInterface = 0;
             
@@ -242,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const subnet = subnets[subnetIndex];
                 const row = document.createElement('tr');
                 row.innerHTML = `
+                    <td></td>
                     <td></td>
                     <td>${group.interface}</td>
                     <td></td>
@@ -258,15 +299,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 const subnet = subnets[subnetIndex];
                 const interfaceName = `${group.interface}.${currentVlanId}`;
                 
+                // Generate IPv6 addresses if prefix is set
+                let ipv6Addr = '';
+                let ipv6Gateway = '';
+                if (ipv6Prefix) {
+                    ipv6Addr = generateIPv6Address(currentVlanId, ipv6Prefix, ipv6Format);
+                    ipv6Gateway = generateIPv6Gateway(currentVlanId, ipv6Prefix, ipv6Format);
+                    
+                    // Store mapping for end-users (subnet index -> IPv6 address)
+                    vlanToIPv6Map[subnetIndex] = {
+                        vlanId: currentVlanId,
+                        ipv6Address: ipv6Addr,
+                        ipv6Gateway: ipv6Addr // Use the router's IPv6 address as gateway for users
+                    };
+                }
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${currentVlanId} - ${subnet.name}</td>
+                    <td>${currentVlanId}</td>
+                    <td>${subnet.name}</td>
                     <td>${interfaceName}</td>
                     <td>${subnet.lastUsable}</td>
                     <td>${subnet.subnetMask}</td>
                     <td>${subnet.lastUsable}</td>
-                    <td></td>
-                    <td></td>
+                    <td>${ipv6Addr}</td>
+                    <td>${ipv6Gateway}</td>
                 `;
                 routersTbody.appendChild(row);
                 
@@ -294,128 +351,131 @@ document.addEventListener('DOMContentLoaded', () => {
             switchesTbody.appendChild(row);
         });
 
-        // Generate end-user entries based on number of users input
-        if (numUsers > 0) {
-            const usersPerSubnet = Math.ceil(numUsers / subnets.length);
-            let globalUserCount = 0;
-            let subnetDebugInfo = [];
+        // Generate end-user entries based on host count per subnet
+        const tabsContainer = document.createElement('div');
+        tabsContainer.className = 'subnet-tabs';
+        endusersContainer.appendChild(tabsContainer);
+        
+        // Create content container
+        const contentContainer = document.createElement('div');
+        contentContainer.className = 'subnet-tabs-content';
+        endusersContainer.appendChild(contentContainer);
+        
+        let totalPCsGenerated = 0;
+        let subnetDebugInfo = [];
+        
+        subnets.forEach((subnet, subnetIndex) => {
+            const usersInThisSubnet = subnet.requestedHosts; // Use the requested hosts as number of PCs
+
+            // Create tab button
+            const tabButton = document.createElement('button');
+            tabButton.className = 'subnet-tab' + (subnetIndex === 0 ? ' active' : '');
+            tabButton.textContent = subnet.name;
+            tabButton.dataset.subnetIndex = subnetIndex;
+            tabsContainer.appendChild(tabButton);
+
+            // Create a separate table for this subnet
+            const subnetTableDiv = document.createElement('div');
+            subnetTableDiv.className = 'subnet-tab-content' + (subnetIndex === 0 ? ' active' : '');
+            subnetTableDiv.dataset.subnetIndex = subnetIndex;
+            subnetTableDiv.innerHTML = `
+                <div class="subnet-enduser-table">
+                    <h4>${subnet.name} - ${usersInThisSubnet} PCs</h4>
+                    <table class="doc-table">
+                        <thead>
+                            <tr>
+                                <th>Device Name</th>
+                                <th>IPv4 Address</th>
+                                <th>Subnet Mask</th>
+                                <th>IPv4 Default Gateway</th>
+                                <th>IPv4 DNS Server</th>
+                                <th>IPv6 Address</th>
+                                <th>IPv6 Default Gateway</th>
+                                <th>IPv6 DNS Server</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            `;
+            contentContainer.appendChild(subnetTableDiv);
+
+            const tbody = subnetTableDiv.querySelector('tbody');
+
+            // Parse the first usable IP
+            const firstIP = subnet.firstUsable.split('.').map(Number);
             
-            // Create tabs container
-            const tabsContainer = document.createElement('div');
-            tabsContainer.className = 'subnet-tabs';
-            endusersContainer.appendChild(tabsContainer);
-            
-            // Create content container
-            const contentContainer = document.createElement('div');
-            contentContainer.className = 'subnet-tabs-content';
-            endusersContainer.appendChild(contentContainer);
-            
-            for (let subnetIndex = 0; subnetIndex < subnets.length && globalUserCount < numUsers; subnetIndex++) {
-                const subnet = subnets[subnetIndex];
-                const usersInThisSubnet = Math.min(usersPerSubnet, numUsers - globalUserCount);
-
-                // Create tab button
-                const tabButton = document.createElement('button');
-                tabButton.className = 'subnet-tab' + (subnetIndex === 0 ? ' active' : '');
-                tabButton.textContent = subnet.name;
-                tabButton.dataset.subnetIndex = subnetIndex;
-                tabsContainer.appendChild(tabButton);
-
-                // Create a separate table for this subnet
-                const subnetTableDiv = document.createElement('div');
-                subnetTableDiv.className = 'subnet-tab-content' + (subnetIndex === 0 ? ' active' : '');
-                subnetTableDiv.dataset.subnetIndex = subnetIndex;
-                subnetTableDiv.innerHTML = `
-                    <div class="subnet-enduser-table">
-                        <h4>${subnet.name} - ${usersInThisSubnet} PCs</h4>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Device Name</th>
-                                    <th>IPv4 Address</th>
-                                    <th>Subnet Mask</th>
-                                    <th>IPv4 Default Gateway</th>
-                                    <th>IPv4 DNS Server</th>
-                                    <th>IPv6 Address</th>
-                                    <th>IPv6 Default Gateway</th>
-                                    <th>IPv6 DNS Server</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                `;
-                contentContainer.appendChild(subnetTableDiv);
-
-                const tbody = subnetTableDiv.querySelector('tbody');
-                let pcCountInSubnet = 0;
-
-                // Parse the first usable IP
-                const firstIP = subnet.firstUsable.split('.').map(Number);
+            for (let i = 0; i < usersInThisSubnet; i++) {
+                totalPCsGenerated++;
                 
-                for (let i = 0; i < usersInThisSubnet; i++) {
-                    globalUserCount++;
-                    pcCountInSubnet++;
-                    
-                    // Calculate IP address for this user
-                    let currentIP = [...firstIP];
-                    currentIP[3] += i;
-                    
-                    // Handle overflow
-                    for (let octet = 3; octet > 0; octet--) {
-                        if (currentIP[octet] > 255) {
-                            currentIP[octet] -= 256;
-                            currentIP[octet - 1]++;
-                        }
+                // Calculate IP address for this user
+                let currentIP = [...firstIP];
+                currentIP[3] += i;
+                
+                // Handle overflow
+                for (let octet = 3; octet > 0; octet--) {
+                    if (currentIP[octet] > 255) {
+                        currentIP[octet] -= 256;
+                        currentIP[octet - 1]++;
                     }
-                    
-                    const userIP = currentIP.join('.');
-                    
-                    // Create device name with subnet name prefix
-                    const deviceName = `${subnet.name}PC${i + 1}`;
-                    
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${deviceName}</td>
-                        <td>${userIP}</td>
-                        <td>${subnet.subnetMask}</td>
-                        <td>${subnet.lastUsable}</td>
-                        <td>${ipv4DNS}</td>
-                        <td></td>
-                        <td></td>
-                        <td>${ipv6DNS}</td>
-                    `;
-                    tbody.appendChild(row);
                 }
                 
-                // Store debug info for this subnet
-                subnetDebugInfo.push({
-                    name: subnet.name,
-                    pcCount: pcCountInSubnet
-                });
+                const userIP = currentIP.join('.');
+                
+                // Create device name with subnet name prefix
+                const deviceName = `${subnet.name}PC${i + 1}`;
+                
+                // Get IPv6 info for this subnet
+                const ipv6Info = vlanToIPv6Map[subnetIndex] || {};
+                const userIPv6Gateway = ipv6Info.ipv6Gateway || '';
+                
+                // Generate user IPv6 address if prefix is configured
+                let userIPv6Address = '';
+                if (ipv6Prefix && ipv6Info.vlanId) {
+                    userIPv6Address = generateUserIPv6Address(ipv6Info.vlanId, i, ipv6Prefix, ipv6Format);
+                }
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${deviceName}</td>
+                    <td>${userIP}</td>
+                    <td>${subnet.subnetMask}</td>
+                    <td>${subnet.lastUsable}</td>
+                    <td>${ipv4DNS}</td>
+                    <td>${userIPv6Address}</td>
+                    <td>${userIPv6Gateway}</td>
+                    <td>${ipv6DNS}</td>
+                `;
+                tbody.appendChild(row);
             }
             
-            // Add tab click handlers
-            const tabButtons = tabsContainer.querySelectorAll('.subnet-tab');
-            tabButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const targetIndex = button.dataset.subnetIndex;
-                    
-                    // Remove active class from all tabs and contents
-                    tabButtons.forEach(btn => btn.classList.remove('active'));
-                    contentContainer.querySelectorAll('.subnet-tab-content').forEach(content => {
-                        content.classList.remove('active');
-                    });
-                    
-                    // Add active class to clicked tab and corresponding content
-                    button.classList.add('active');
-                    contentContainer.querySelector(`[data-subnet-index="${targetIndex}"]`).classList.add('active');
-                });
+            // Store debug info for this subnet
+            subnetDebugInfo.push({
+                name: subnet.name,
+                pcCount: usersInThisSubnet
             });
-            
-            // Display debug information
-            displayDebugInfo(globalUserCount, subnets.length, subnetDebugInfo);
-        }
+        });
+        
+        // Add tab click handlers
+        const tabButtons = tabsContainer.querySelectorAll('.subnet-tab');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetIndex = button.dataset.subnetIndex;
+                
+                // Remove active class from all tabs and contents
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                contentContainer.querySelectorAll('.subnet-tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // Add active class to clicked tab and corresponding content
+                button.classList.add('active');
+                contentContainer.querySelector(`[data-subnet-index="${targetIndex}"]`).classList.add('active');
+            });
+        });
+        
+        // Display debug information
+        displayDebugInfo(totalPCsGenerated, subnets.length, subnetDebugInfo);
 
         // Show documentation section
         document.getElementById('documentation-section').style.display = 'block';
@@ -543,9 +603,52 @@ document.addEventListener('DOMContentLoaded', () => {
 // DNS Configuration
 let ipv4DNS = '';
 let ipv6DNS = '';
-let ipv6Address = '';
+let ipv6Prefix = '';
+let ipv6Format = 'vlan-pattern';
+let ipv6Addresses = {};
 let dnsChanged = false;
 let settingsConfigured = false;
+
+// Function to generate IPv6 address based on VLAN ID
+function generateIPv6Address(vlanId, prefix, format) {
+    // Remove any trailing colons or slashes from prefix
+    prefix = prefix.replace(/[:\/]+$/, '');
+    
+    if (format === 'vlan-pattern') {
+        // Format: FD00:10:10:10::1/64 (VLAN ID in decimal, repeated in pattern)
+        return `${prefix}:${vlanId}:${vlanId}:${vlanId}::1/64`;
+    } else {
+        // Format: FD00::10:1/64 (Sequential)
+        return `${prefix}::${vlanId}:1/64`;
+    }
+}
+
+// Function to generate IPv6 gateway address
+function generateIPv6Gateway(vlanId, prefix, format) {
+    prefix = prefix.replace(/[:\/]+$/, '');
+    
+    if (format === 'vlan-pattern') {
+        // Gateway format: FD00:10:10:10::/64 (ends with :: not ::1)
+        return `${prefix}:${vlanId}:${vlanId}:${vlanId}::/64`;
+    } else {
+        // Gateway format: FD00::10:/64 (Sequential)
+        return `${prefix}::${vlanId}:/64`;
+    }
+}
+
+// Function to generate IPv6 address for end-users (starts from ::2)
+function generateUserIPv6Address(vlanId, userIndex, prefix, format) {
+    prefix = prefix.replace(/[:\/]+$/, '');
+    const hostNumber = userIndex + 2; // Start from ::2 (::1 is the router)
+    
+    if (format === 'vlan-pattern') {
+        // Format: FD00:10:10:10::2/64, FD00:10:10:10::3/64, etc.
+        return `${prefix}:${vlanId}:${vlanId}:${vlanId}::${hostNumber}/64`;
+    } else {
+        // Format: FD00::10:2/64, FD00::10:3/64, etc.
+        return `${prefix}::${vlanId}:${hostNumber}/64`;
+    }
+}
 
 // Interface Groups Management
 let interfaceGroups = [];
@@ -673,27 +776,31 @@ document.getElementById('set-ipv6-dns').addEventListener('click', () => {
     }
 });
 
-document.getElementById('set-ipv6-address').addEventListener('click', () => {
-    const value = document.getElementById('ipv6-address-input').value.trim();
-    if (value) {
-        ipv6Address = value;
+document.getElementById('generate-ipv6').addEventListener('click', () => {
+    const prefix = document.getElementById('ipv6-prefix').value.trim();
+    const format = document.getElementById('ipv6-format').value;
+    
+    if (prefix) {
+        ipv6Prefix = prefix;
+        ipv6Format = format;
+        ipv6Addresses = {}; // Reset addresses
         dnsChanged = true;
         settingsConfigured = true;
         
         // Show success indicator
-        const btn = document.getElementById('set-ipv6-address');
-        btn.textContent = '✓ IPv6 Address Set';
+        const btn = document.getElementById('generate-ipv6');
+        btn.textContent = '✓ IPv6 Generated';
         btn.style.background = '#10b981';
         
         // Show regenerate message
         showRegenerateMessage();
         
         setTimeout(() => {
-            btn.textContent = 'Set IPv6 Address';
+            btn.textContent = 'Generate IPv6 Addresses';
             btn.style.background = '';
         }, 2000);
     } else {
-        alert('Please enter an IPv6 address.');
+        alert('Please enter an IPv6 prefix (e.g., FD00 or 2001:DB8).');
     }
 });
 
