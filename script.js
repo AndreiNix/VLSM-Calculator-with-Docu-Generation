@@ -226,48 +226,54 @@ document.addEventListener('DOMContentLoaded', () => {
         switchesTbody.innerHTML = '';
         endusersContainer.innerHTML = '';
 
-            // Generate router entries (one per subnet)
+            // Generate router entries based on interface groups
         const interfaceGroups = getInterfaceGroups();
-        let currentGroupIndex = 0;
-        let vlansInCurrentGroup = 0;
-        let vlanId = 10; // Start VLAN IDs from 10
+        const startingVlan = parseInt(document.getElementById('starting-vlan').value) || 10;
+        const vlanIncrement = parseInt(document.getElementById('vlan-increment').value) || 10;
         
-        subnets.forEach((subnet, index) => {
-            // Check if we need to move to the next interface group
-            if (currentGroupIndex < interfaceGroups.length) {
-                const currentGroup = interfaceGroups[currentGroupIndex];
+        let subnetIndex = 0;
+        let currentVlanId = startingVlan;
+        
+        interfaceGroups.forEach((group, groupIndex) => {
+            let vlansOnThisInterface = 0;
+            
+            // Add base interface row (e.g., G0/0)
+            if (subnetIndex < subnets.length) {
+                const subnet = subnets[subnetIndex];
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td></td>
+                    <td>${group.interface}</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                `;
+                routersTbody.appendChild(row);
+            }
+            
+            // Add subinterfaces for this gigabit interface
+            while (vlansOnThisInterface < group.vlanCount && subnetIndex < subnets.length) {
+                const subnet = subnets[subnetIndex];
+                const interfaceName = `${group.interface}.${currentVlanId}`;
                 
-                if (vlansInCurrentGroup >= currentGroup.vlanCount) {
-                    currentGroupIndex++;
-                    vlansInCurrentGroup = 0;
-                    vlanId = 10; // Reset VLAN ID for new interface (optional, can be removed if you want continuous VLAN IDs)
-                }
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${currentVlanId} - ${subnet.name}</td>
+                    <td>${interfaceName}</td>
+                    <td>${subnet.lastUsable}</td>
+                    <td>${subnet.subnetMask}</td>
+                    <td>${subnet.lastUsable}</td>
+                    <td></td>
+                    <td></td>
+                `;
+                routersTbody.appendChild(row);
+                
+                currentVlanId += vlanIncrement;
+                vlansOnThisInterface++;
+                subnetIndex++;
             }
-            
-            // Determine interface name
-            let interfaceName;
-            if (currentGroupIndex < interfaceGroups.length) {
-                const currentGroup = interfaceGroups[currentGroupIndex];
-                interfaceName = `${currentGroup.interface}.${vlanId}`;
-                vlansInCurrentGroup++;
-                vlanId++;
-            } else {
-                // Fallback if more subnets than configured interfaces
-                interfaceName = `G0/${index}`;
-            }
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>Router1</td>
-                <td>${interfaceName}</td>
-                <td>${subnet.lastUsable}</td>
-                <td>${subnet.subnetMask}</td>
-                <td>${subnet.lastUsable}</td>
-                <td></td>
-                <td></td>
-                <td></td>
-            `;
-            routersTbody.appendChild(row);
         });
 
         // Generate switch entries (one per subnet)
@@ -549,6 +555,24 @@ document.addEventListener('DOMContentLoaded', function() {
     addInterfaceGroup();
     
     document.getElementById('add-interface-group').addEventListener('click', addInterfaceGroup);
+    
+    // Tab switching functionality
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.dataset.tab;
+            
+            // Remove active class from all buttons and contents
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Add active class to clicked button and corresponding content
+            button.classList.add('active');
+            document.getElementById(targetTab).classList.add('active');
+        });
+    });
 });
 
 function addInterfaceGroup() {
@@ -559,15 +583,19 @@ function addInterfaceGroup() {
     groupDiv.className = 'interface-group';
     groupDiv.dataset.index = groupIndex;
     groupDiv.innerHTML = `
-        <div class="interface-group-inputs">
-            <input type="text" class="interface-name" placeholder="G0/0" value="G0/${groupIndex}" />
-            <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="1" />
+        <div class="interface-group-header">
+            <label>Gigabit Interface:</label>
+            <input type="text" class="interface-name" placeholder="e.g., G0/0" value="G0/${groupIndex}" />
             <button class="btn-remove-interface" onclick="removeInterfaceGroup(${groupIndex})">×</button>
+        </div>
+        <div class="vlan-count-wrapper">
+            <label>Number of VLANs on this interface:</label>
+            <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="5" />
         </div>
     `;
     
     container.appendChild(groupDiv);
-    interfaceGroups.push({ interface: `G0/${groupIndex}`, vlanCount: 1 });
+    interfaceGroups.push({ interface: `G0/${groupIndex}`, vlanCount: 5 });
 }
 
 function removeInterfaceGroup(index) {
@@ -586,8 +614,11 @@ function getInterfaceGroups() {
         const interfaceName = div.querySelector('.interface-name').value.trim();
         const vlanCount = parseInt(div.querySelector('.vlan-count').value) || 1;
         
-        if (interfaceName && vlanCount > 0) {
-            groups.push({ interface: interfaceName, vlanCount: vlanCount });
+        if (interfaceName) {
+            groups.push({ 
+                interface: interfaceName, 
+                vlanCount: vlanCount
+            });
         }
     });
     

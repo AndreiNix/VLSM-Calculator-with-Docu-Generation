@@ -20,27 +20,32 @@ body {
     flex: 1;
     min-width: 0;
     width: 100%;
+    overflow-x: hidden;
 }
 
 .side-panel {
     width: 350px;
-    min-width: 280px;
-    max-width: 400px;
+    min-width: 350px;
+    max-width: 350px;
     background: white;
     border-radius: 12px;
-    padding: 25px;
+    padding: 0;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     height: fit-content;
+    max-height: calc(100vh - 40px);
     position: sticky;
     top: 20px;
     box-sizing: border-box;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .side-panel h2 {
     color: #333;
-    font-size: 1.5em;
+    font-size: 1.3em;
     margin-bottom: 20px;
-    text-align: center;
+    text-align: left;
 }
 
 .side-input-group {
@@ -999,68 +1004,191 @@ input[type="number"]:focus {
 
 /* Interface Groups Styling */
 .interface-group {
-    margin-bottom: 15px;
-    padding: 12px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: 12px;
+    border: 2px solid #e0e0e0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    position: relative;
+    box-sizing: border-box;
 }
 
-.interface-group-inputs {
-    display: flex;
+.interface-group-header {
+    display: grid;
+    grid-template-columns: 100px 1fr 40px;
     gap: 10px;
     align-items: center;
+    margin-bottom: 15px;
 }
 
-.interface-group-inputs .interface-name {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 14px;
+.interface-group-header label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
 }
 
-.interface-group-inputs .vlan-count {
-    width: 80px;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 14px;
+.interface-group-header .interface-name {
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    background: #f8f9fa;
+    transition: all 0.3s;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.interface-group-header .interface-name:focus {
+    border-color: #6366f1;
+    background: white;
+    outline: none;
+}
+
+.vlan-count-wrapper {
+    margin-top: 0;
+}
+
+.vlan-count-wrapper label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.vlan-count-wrapper .vlan-count {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    background: #f8f9fa;
+    transition: all 0.3s;
+    box-sizing: border-box;
+}
+
+.vlan-count-wrapper .vlan-count:focus {
+    border-color: #6366f1;
+    background: white;
+    outline: none;
 }
 
 .btn-remove-interface {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     background: #ef4444;
     color: white;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 20px;
+    font-weight: bold;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.3s;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+    flex-shrink: 0;
 }
 
 .btn-remove-interface:hover {
     background: #dc2626;
+    transform: scale(1.05);
+}
+
+.btn-remove-interface:active {
+    transform: scale(0.95);
 }
 
 .btn-add-interface {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     background: #6366f1;
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
-    transition: background 0.3s;
+    transition: all 0.3s;
     margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-sizing: border-box;
 }
 
 .btn-add-interface:hover {
+    background: #4f46e5;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+}
+
+.btn-add-interface:active {
+    transform: translateY(0);
+}
+
+/* Side Panel Tabs */
+.side-panel-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #e0e0e0;
+    background: #f8f9fa;
+    border-radius: 12px 12px 0 0;
+}
+
+.tab-button {
+    flex: 1;
+    padding: 16px 10px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 12px;
+    font-weight: 700;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tab-button:hover {
+    color: #6366f1;
+    background: #e8e9fd;
+}
+
+.tab-button.active {
+    color: #6366f1;
+    background: white;
+    border-bottom-color: #6366f1;
+}
+
+.tab-content {
+    display: none;
+    padding: 25px;
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.tab-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.tab-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.tab-content::-webkit-scrollbar-thumb {
+    background: #6366f1;
+    border-radius: 10px;
+}
+
+.tab-content::-webkit-scrollbar-thumb:hover {
     background: #4f46e5;
 }

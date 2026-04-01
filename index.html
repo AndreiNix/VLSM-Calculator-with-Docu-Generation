@@ -88,14 +88,13 @@
             <table class="doc-table" id="routers-table">
               <thead>
                 <tr>
-                  <th>Device Name</th>
+                  <th>VLAN</th>
                   <th>Interface</th>
                   <th>IPv4 Address</th>
                   <th>Subnet Mask</th>
                   <th>IPv4 Default Gateway</th>
                   <th>IPv6 Address</th>
                   <th>IPv6 Default Gateway</th>
-                  <th>Routing</th>
                 </tr>
               </thead>
               <tbody id="routers-tbody"></tbody>
@@ -130,44 +129,64 @@
     </div>
 
     <div class="side-panel">
-      <h2>Router Interface Configuration</h2>
-
-      <div class="side-input-group">
-        <p class="info-text">Define which interface handles which VLANs (e.g., G0/0 handles 3 VLANs, G0/1 handles 2 VLANs)</p>
+      <div class="side-panel-tabs">
+        <button class="tab-button active" data-tab="router-config">Router Config</button>
+        <button class="tab-button" data-tab="dns-config">DNS Config</button>
+        <button class="tab-button" data-tab="ipv6-config">IPv6 Config</button>
       </div>
 
-      <div id="interface-groups-container">
-        <!-- Interface groups will be dynamically added here -->
+      <div class="tab-content active" id="router-config">
+        <h2>Router Interface Configuration</h2>
+
+        <div id="interface-groups-container">
+          <!-- Interface groups will be dynamically added here -->
+        </div>
+
+        <button id="add-interface-group" class="btn-add-interface">+ Add Gigabit Interface</button>
+
+        <div class="side-input-group">
+          <label for="starting-vlan">Starting VLAN ID</label>
+          <input type="number" id="starting-vlan" min="1" value="10" placeholder="e.g., 10" />
+          <p class="info-text">First VLAN ID to use</p>
+        </div>
+
+        <div class="side-input-group">
+          <label for="vlan-increment">VLAN ID Increment</label>
+          <input type="number" id="vlan-increment" min="1" value="10" placeholder="e.g., 10" />
+          <p class="info-text">Increment between VLAN IDs (10 = 10,20,30... or 1 = 10,11,12...)</p>
+        </div>
       </div>
 
-      <button id="add-interface-group" class="btn-add-interface">+ Add Interface Group</button>
+      <div class="tab-content" id="dns-config">
+        <h2>DNS Configuration</h2>
 
-      <h2>DNS Configuration</h2>
+        <div class="side-input-group">
+          <label for="ipv4-dns">IPv4 DNS Server</label>
+          <input type="text" id="ipv4-dns" placeholder="Based on VLSM" />
+          <button id="set-ipv4-dns" class="btn-set-dns">Set DNS Server</button>
+        </div>
 
-      <div class="side-input-group">
-        <label for="ipv4-dns">IPv4 DNS Server</label>
-        <input type="text" id="ipv4-dns" placeholder="Based on VLSM" />
-        <button id="set-ipv4-dns" class="btn-set-dns">Set DNS Server</button>
+        <div class="side-input-group">
+          <label for="ipv6-dns">IPv6 DNS Server</label>
+          <input type="text" id="ipv6-dns" placeholder="Enter Own" />
+          <button id="set-ipv6-dns" class="btn-set-dns">Set IPv6</button>
+        </div>
       </div>
 
-      <div class="side-input-group">
-        <label for="ipv6-dns">IPv6 DNS Server</label>
-        <input type="text" id="ipv6-dns" placeholder="Enter Own" />
-        <button id="set-ipv6-dns" class="btn-set-dns">Set IPv6</button>
-      </div>
+      <div class="tab-content" id="ipv6-config">
+        <h2>IPv6 Address</h2>
 
-      <h2>IPv6 Address</h2>
-
-      <div class="side-input-group">
-        <label for="ipv6-address-input">IPv6 Address</label>
-        <input
-          type="text"
-          id="ipv6-address-input"
-          placeholder="Your Desired Address"
-        />
-        <button id="set-ipv6-address" class="btn-set-dns">
-          Set IPv6 Address
-        </button>
+        <div class="side-input-group">
+          <label for="ipv6-address-input">IPv6 Address</label>
+          <input
+            type="text"
+            id="ipv6-address-input"
+            placeholder="Your Desired Address"
+          />
+          <button id="set-ipv6-address" class="btn-set-dns">
+            Set IPv6 Address
+          </button>
+        </div>
       </div>
     </div>
 
