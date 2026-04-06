@@ -122,32 +122,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Debug autofill button
     document.getElementById('debug-autofill').addEventListener('click', () => {
-        // Set CIDR prefix to 20
-        document.getElementById('cidr').value = 20;
+        // Set network IP to 192.168.0.0
+        document.getElementById('network-ip').value = '192.168.0.0';
         
-        // Set subnet count to 12
-        subnetCountInput.value = 12;
+        // Set CIDR prefix to 16
+        document.getElementById('cidr').value = 16;
         
-        // Generate 12 subnet fields
-        generateSubnetFields(12);
+        // Set subnet count to 4
+        subnetCountInput.value = 4;
+        
+        // Generate 4 subnet fields
+        generateSubnetFields(4);
         
         // Fill in subnet names and host counts
         const testData = [
-            // G0/0 - 3 VLANs
-            { name: 'isyn', hosts: 100 },
-            { name: 'mba', hosts: 100 },
-            { name: 'rbv', hosts: 100 },
-            // G0/1 - 3 VLANs
-            { name: 'coop', hosts: 100 },
-            { name: 'hr', hosts: 100 },
-            { name: 'server', hosts: 16 },
-            // G0/2 - 6 VLANs with enough total access switches to exceed 24 ports on first distribution
-            { name: 'finance', hosts: 240 },    // 10 access switches
-            { name: 'marketing', hosts: 240 },  // 10 access switches
-            { name: 'sales', hosts: 120 },      // 5 access switches (total: 25, exceeds 24!)
-            { name: 'it', hosts: 120 },         // 5 access switches (goes to second distribution)
-            { name: 'admin', hosts: 120 },      // 5 access switches
-            { name: 'guest', hosts: 120 }       // 5 access switches
+            // G0/0 - 2 VLANs
+            { name: 'sales', hosts: 100 },
+            { name: 'marketing', hosts: 50 },
+            // G0/1 - 1 VLAN
+            { name: 'finance', hosts: 75 },
+            // G0/2 - 1 VLAN
+            { name: 'it', hosts: 30 }
         ];
         
         const nameInputs = document.querySelectorAll('.subnet-name-input');
@@ -158,12 +153,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (hostInputs[index]) hostInputs[index].value = data.hosts;
         });
         
-        // Configure interface groups: G0/0 with 3 VLANs, G0/1 with 3 VLANs, G0/2 with 6 VLANs
+        // Configure interface groups: G0/0 with 2 VLANs, G0/1 with 1 VLAN, G0/2 with 1 VLAN
         const container = document.getElementById('interface-groups-container');
         container.innerHTML = ''; // Clear existing groups
         interfaceGroups = []; // Reset array
         
-        // Add G0/0 with 3 VLANs
+        // Add G0/0 with 2 VLANs
         const group0Div = document.createElement('div');
         group0Div.className = 'interface-group';
         group0Div.dataset.index = 0;
@@ -175,13 +170,13 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="vlan-count-wrapper">
                 <label>Number of VLANs on this interface:</label>
-                <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="3" />
+                <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="2" />
             </div>
         `;
         container.appendChild(group0Div);
-        interfaceGroups.push({ interface: 'G0/0', vlanCount: 3 });
+        interfaceGroups.push({ interface: 'G0/0', vlanCount: 2 });
         
-        // Add G0/1 with 3 VLANs
+        // Add G0/1 with 1 VLAN
         const group1Div = document.createElement('div');
         group1Div.className = 'interface-group';
         group1Div.dataset.index = 1;
@@ -193,13 +188,13 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="vlan-count-wrapper">
                 <label>Number of VLANs on this interface:</label>
-                <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="3" />
+                <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="1" />
             </div>
         `;
         container.appendChild(group1Div);
-        interfaceGroups.push({ interface: 'G0/1', vlanCount: 3 });
+        interfaceGroups.push({ interface: 'G0/1', vlanCount: 1 });
         
-        // Add G0/2 with 6 VLANs
+        // Add G0/2 with 1 VLAN
         const group2Div = document.createElement('div');
         group2Div.className = 'interface-group';
         group2Div.dataset.index = 2;
@@ -211,11 +206,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="vlan-count-wrapper">
                 <label>Number of VLANs on this interface:</label>
-                <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="6" />
+                <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="1" />
             </div>
         `;
         container.appendChild(group2Div);
-        interfaceGroups.push({ interface: 'G0/2', vlanCount: 6 });
+        interfaceGroups.push({ interface: 'G0/2', vlanCount: 1 });
         
         // Show success message
         const btn = document.getElementById('debug-autofill');
@@ -421,18 +416,18 @@ document.addEventListener('DOMContentLoaded', () => {
             vlanAccessSwitchCounts.push(numAccessSwitches);
         });
         
-        // Redistribute VLANs across router interfaces based on 24-port limit per distribution
+        // Redistribute VLANs across router interfaces based on VLAN encapsulation
         const redistributedRouterInterfaces = [];
         let currentRouterInterfaceIndex = 0;
-        let currentPortCount = 0;
         let currentVlans = [];
         
         subnets.forEach((subnet, index) => {
             const vlanId = startingVlan + (index * vlanIncrement);
             const numAccessSwitches = vlanAccessSwitchCounts[index];
             
-            // Check if adding this VLAN would exceed 24 ports
-            if (currentPortCount + numAccessSwitches > 24 && currentVlans.length > 0) {
+            // Check if we need to move to the next router interface based on VLAN count
+            const currentInterfaceGroup = interfaceGroups[currentRouterInterfaceIndex];
+            if (currentInterfaceGroup && currentVlans.length >= currentInterfaceGroup.vlanCount) {
                 // Save current group and move to next router interface
                 if (!redistributedRouterInterfaces[currentRouterInterfaceIndex]) {
                     redistributedRouterInterfaces[currentRouterInterfaceIndex] = {
@@ -442,16 +437,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 redistributedRouterInterfaces[currentRouterInterfaceIndex].vlans.push(...currentVlans);
                 
-                // Move to next router interface if available
-                if (currentRouterInterfaceIndex < interfaceGroups.length - 1) {
-                    currentRouterInterfaceIndex++;
-                    currentVlans = [];
-                    currentPortCount = 0;
-                } else {
-                    // No more router interfaces, need cascading distribution
-                    currentVlans = [];
-                    currentPortCount = 0;
-                }
+                // Move to next router interface
+                currentRouterInterfaceIndex++;
+                currentVlans = [];
             }
             
             // Calculate IP addresses
@@ -489,7 +477,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 secondToLastUsable: secondToLastUsable,
                 thirdToLastUsable: thirdToLastUsable
             });
-            currentPortCount += numAccessSwitches;
         });
         
         // Add the last group
@@ -508,36 +495,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const vlansOnThisInterface = routerInterfaceData.vlans;
             const routerInterface = routerInterfaceData.routerInterface;
             
-            // Group VLANs by distribution switch based on 24-port limit
+            // Group VLANs by distribution switch based on VLAN encapsulation
+            // All VLANs on the same router interface go to the same distribution switch
             const distributionGroups = [];
-            let currentDistGroup = [];
-            let currentPortCount = 0;
             
-            vlansOnThisInterface.forEach((vlanInfo) => {
-                // Check if adding this VLAN would exceed 24 ports
-                if (currentPortCount + vlanInfo.numAccessSwitches > 24 && currentDistGroup.length > 0) {
-                    // Start a new distribution group
-                    distributionGroups.push(currentDistGroup);
-                    currentDistGroup = [];
-                    currentPortCount = 0;
-                }
-                
-                currentDistGroup.push(vlanInfo);
-                currentPortCount += vlanInfo.numAccessSwitches;
-            });
-            
-            // Add the last distribution group
-            if (currentDistGroup.length > 0) {
-                distributionGroups.push(currentDistGroup);
-            }
+            // Single distribution group for all VLANs on this router interface
+            distributionGroups.push(vlansOnThisInterface);
             
             // Generate distribution switches
             distributionGroups.forEach((distGroup, distIndex) => {
-                const distSwitchName = `${routerInterface}-dist-switch${distIndex + 1}`;
-                const isFirstDistribution = distIndex === 0;
-                const hasNextDistribution = distIndex < distributionGroups.length - 1;
+                const distSwitchName = `${routerInterface}-dist-switch`;
                 
-                // Add distribution switch g0/1 row (uplink to router or parent distribution)
+                // Add distribution switch g0/1 row (uplink to router)
                 const distTrunkRow = document.createElement('tr');
                 distTrunkRow.innerHTML = `
                     <td>${distSwitchName}</td>
@@ -551,55 +520,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 switchesDistTbody.appendChild(distTrunkRow);
                 
-                // If this distribution has a next distribution, add g0/2 row (downlink to child)
-                if (hasNextDistribution) {
-                    const distG02Row = document.createElement('tr');
-                    distG02Row.innerHTML = `
-                        <td></td>
-                        <td>g0/2</td>
-                        <td>99</td>
-                        <td>No</td>
-                        <td>Yes</td>
-                        <td>99</td>
-                        <td></td>
-                        <td></td>
-                    `;
-                    switchesDistTbody.appendChild(distG02Row);
-                    
-                    // Add entries for VLANs that are on the next distribution
-                    // These VLANs need to be trunked through this distribution's g0/2
-                    const nextDistGroup = distributionGroups[distIndex + 1];
-                    nextDistGroup.forEach((vlanInfo) => {
-                        // Calculate second-to-last IP for dist-switch1's g0/2 entry
-                        const lastIP = vlanInfo.subnet.lastUsable.split('.').map(Number);
-                        const secondToLastIP = [...lastIP];
-                        secondToLastIP[3] -= 1;
-                        
-                        // Handle underflow
-                        for (let octet = 3; octet > 0; octet--) {
-                            if (secondToLastIP[octet] < 0) {
-                                secondToLastIP[octet] += 256;
-                                secondToLastIP[octet - 1]--;
-                            }
-                        }
-                        
-                        const secondToLastUsable = secondToLastIP.join('.');
-                        
-                        const distFaRow = document.createElement('tr');
-                        distFaRow.innerHTML = `
-                            <td></td>
-                            <td>g0/2</td>
-                            <td>${vlanInfo.vlanId}</td>
-                            <td>No</td>
-                            <td>Yes</td>
-                            <td>99</td>
-                            <td>${secondToLastUsable}</td>
-                            <td>${vlanInfo.subnet.lastUsable}</td>
-                        `;
-                        switchesDistTbody.appendChild(distFaRow);
-                    });
-                }
-                
                 // Add FastEthernet rows for VLANs on this distribution
                 let portOffset = 0;
                 distGroup.forEach((vlanInfo) => {
@@ -608,10 +528,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const faPortRange = vlanInfo.numAccessSwitches === 1 ? `fa0/${faPortStart}` : `fa0/${faPortStart}-${faPortEnd}`;
                     portOffset += vlanInfo.numAccessSwitches;
                     
-                    // Determine IP based on distribution level
-                    // dist-switch1: second-to-last
-                    // dist-switch2: third-to-last
-                    const ipForThisDist = distIndex === 0 ? vlanInfo.secondToLastUsable : vlanInfo.thirdToLastUsable;
+                    // Use second-to-last IP for distribution switch
+                    const ipForThisDist = vlanInfo.secondToLastUsable;
                     
                     const distFaRow = document.createElement('tr');
                     distFaRow.innerHTML = `
@@ -629,10 +547,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Generate access switches for all VLANs on this distribution
                 distGroup.forEach((vlanInfo) => {
-                    // Calculate starting offset for access switch IPs
-                    // If this VLAN is on dist-switch1, access switches start at 3rd-to-last
-                    // If this VLAN is on dist-switch2, access switches start at 4th-to-last
-                    const ipOffset = distIndex === 0 ? 2 : 3;
+                    // Access switches start at 3rd-to-last IP
+                    const ipOffset = 2;
                     
                     for (let accessNum = 1; accessNum <= vlanInfo.numAccessSwitches; accessNum++) {
                         const accessSwitchName = `${vlanInfo.subnet.name}-access-switch${accessNum}`;
