@@ -410,13 +410,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // First, calculate how many access switches each VLAN needs
         const vlanAccessSwitchCounts = [];
         subnets.forEach((subnet, index) => {
-            const usableHosts = subnet.usableHosts;
+            const requestedHosts = subnet.requestedHosts; // Use requested hosts, not usable hosts
             const portsPerSwitch = 24;
             let numAccessSwitches;
-            if (usableHosts <= portsPerSwitch) {
+            if (requestedHosts <= portsPerSwitch) {
                 numAccessSwitches = 1;
             } else {
-                numAccessSwitches = Math.ceil(usableHosts / portsPerSwitch);
+                numAccessSwitches = Math.ceil(requestedHosts / portsPerSwitch);
             }
             vlanAccessSwitchCounts.push(numAccessSwitches);
         });
