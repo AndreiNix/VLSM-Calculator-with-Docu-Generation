@@ -906,33 +906,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Export Routers table
         const routersTable = document.getElementById('routers-table');
-        const routersWS = XLSX.utils.table_to_sheet(routersTable);
-        styleWorksheet(routersWS);
-        XLSX.utils.book_append_sheet(wb, routersWS, 'Routers');
+        if (routersTable) {
+            const routersWS = XLSX.utils.table_to_sheet(routersTable);
+            styleWorksheet(routersWS);
+            XLSX.utils.book_append_sheet(wb, routersWS, 'Routers');
+        }
 
-        // Export Switches - Access table
-        const switchesAccessTable = document.getElementById('switches-access-table');
-        const switchesAccessWS = XLSX.utils.table_to_sheet(switchesAccessTable);
-        styleWorksheet(switchesAccessWS);
-        XLSX.utils.book_append_sheet(wb, switchesAccessWS, 'Switches-Access');
+        // Export Switches - Access tables (from tabs)
+        const switchesAccessContainer = document.getElementById('switches-access-container');
+        if (switchesAccessContainer) {
+            const accessTables = switchesAccessContainer.querySelectorAll('.subnet-enduser-table');
+            accessTables.forEach((subnetDiv) => {
+                const table = subnetDiv.querySelector('table');
+                if (table) {
+                    const subnetName = subnetDiv.querySelector('h4').textContent.split(' - ')[0];
+                    const ws = XLSX.utils.table_to_sheet(table);
+                    styleWorksheet(ws);
+                    XLSX.utils.book_append_sheet(wb, ws, `Access-${subnetName}`);
+                }
+            });
+        }
 
         // Export Switches - Distribution table
         const switchesDistTable = document.getElementById('switches-dist-table');
-        const switchesDistWS = XLSX.utils.table_to_sheet(switchesDistTable);
-        styleWorksheet(switchesDistWS);
-        XLSX.utils.book_append_sheet(wb, switchesDistWS, 'Switches-Distribution');
+        if (switchesDistTable) {
+            const switchesDistWS = XLSX.utils.table_to_sheet(switchesDistTable);
+            styleWorksheet(switchesDistWS);
+            XLSX.utils.book_append_sheet(wb, switchesDistWS, 'Switches-Distribution');
+        }
 
         // Export each subnet's end-users table as a separate sheet
         const endusersContainer = document.getElementById('endusers-container');
-        const subnetTables = endusersContainer.querySelectorAll('.subnet-enduser-table');
-        
-        subnetTables.forEach((subnetDiv, index) => {
-            const table = subnetDiv.querySelector('table');
-            const subnetName = subnetDiv.querySelector('h4').textContent.split(' - ')[0]; // Remove PC count from name
-            const ws = XLSX.utils.table_to_sheet(table);
-            styleWorksheet(ws);
-            XLSX.utils.book_append_sheet(wb, ws, `${subnetName}-Users`);
-        });
+        if (endusersContainer) {
+            const subnetTables = endusersContainer.querySelectorAll('.subnet-enduser-table');
+            
+            subnetTables.forEach((subnetDiv, index) => {
+                const table = subnetDiv.querySelector('table');
+                if (table) {
+                    const subnetName = subnetDiv.querySelector('h4').textContent.split(' - ')[0]; // Remove PC count from name
+                    const ws = XLSX.utils.table_to_sheet(table);
+                    styleWorksheet(ws);
+                    XLSX.utils.book_append_sheet(wb, ws, `Users-${subnetName}`);
+                }
+            });
+        }
 
         // Save file
         XLSX.writeFile(wb, 'Cisco_Packet_Tracer_Documentation.xlsx');
