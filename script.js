@@ -284,7 +284,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        resultsDiv.innerHTML = `
+        // Calculate network summary
+        const networkSize = Math.pow(2, 32 - cidr);
+        const totalAvailableHosts = networkSize - 2; // Subtract network and broadcast
+        const totalRequiredHosts = subnets.reduce((sum, subnet) => sum + subnet.hosts, 0);
+
+        // Display network summary
+        const summaryHTML = `
+            <div class="network-summary">
+                <h3>Network Summary</h3>
+                <p>The network ${networkIP}/${cidr} has ${totalAvailableHosts.toLocaleString()} hosts.</p>
+                <p>Your subnets need ${totalRequiredHosts.toLocaleString()} hosts.</p>
+            </div>
+        `;
+
+        resultsDiv.innerHTML = summaryHTML + `
             <table class="results-table">
                 <thead>
                     <tr>
@@ -367,6 +381,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const subnet = subnets[subnetIndex];
                 const interfaceName = `${group.interface}.${currentVlanId}`;
                 
+                // Store VLAN ID mapping for end-users (always store, not just when IPv6 is set)
+                if (!vlanToIPv6Map[subnetIndex]) {
+                    vlanToIPv6Map[subnetIndex] = {};
+                }
+                vlanToIPv6Map[subnetIndex].vlanId = currentVlanId;
+                
                 // Generate IPv6 addresses if prefix is set
                 let ipv6Addr = '';
                 let ipv6Gateway = '';
@@ -374,12 +394,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     ipv6Addr = generateIPv6Address(currentVlanId, ipv6Prefix, ipv6Format);
                     ipv6Gateway = generateIPv6Gateway(currentVlanId, ipv6Prefix, ipv6Format);
                     
-                    // Store mapping for end-users (subnet index -> IPv6 address)
-                    vlanToIPv6Map[subnetIndex] = {
-                        vlanId: currentVlanId,
-                        ipv6Address: ipv6Addr,
-                        ipv6Gateway: ipv6Addr // Use the router's IPv6 address as gateway for users
-                    };
+                    // Store IPv6 mapping for end-users
+                    vlanToIPv6Map[subnetIndex].ipv6Address = ipv6Addr;
+                    vlanToIPv6Map[subnetIndex].ipv6Gateway = ipv6Addr; // Use the router's IPv6 address as gateway for users
                 }
                 
                 const row = document.createElement('tr');
@@ -700,6 +717,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         subnets.forEach((subnet, subnetIndex) => {
             const usersInThisSubnet = subnet.requestedHosts; // Use the requested hosts as number of PCs
+            
+            // Get VLAN ID for this subnet
+            const ipv6Info = vlanToIPv6Map[subnetIndex] || {};
+            const vlanId = ipv6Info.vlanId || '';
 
             // Create tab button
             const tabButton = document.createElement('button');
@@ -714,7 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
             subnetTableDiv.dataset.subnetIndex = subnetIndex;
             subnetTableDiv.innerHTML = `
                 <div class="subnet-enduser-table">
-                    <h4>${subnet.name} - ${usersInThisSubnet} PCs</h4>
+                    <h4>${subnet.name} - VLAN ${vlanId}</h4>
                     <table class="doc-table">
                         <thead>
                             <tr>
@@ -760,7 +781,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const deviceName = `${subnet.name}PC${i + 1}`;
                 
                 // Get IPv6 info for this subnet
-                const ipv6Info = vlanToIPv6Map[subnetIndex] || {};
                 const userIPv6Gateway = ipv6Info.ipv6Gateway || '';
                 
                 // Generate user IPv6 address if prefix is configured
@@ -866,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             ws['!cols'] = colWidths;
 
-            // Add borders to all cells
+            // Add borders and center alignment to all cells
             for (let R = range.s.r; R <= range.e.r; ++R) {
                 for (let C = range.s.c; C <= range.e.c; ++C) {
                     const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
@@ -886,6 +906,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         right: { style: 'thin', color: { rgb: '000000' } }
                     };
                     
+                    // Center alignment for all cells
+                    ws[cellAddress].s.alignment = {
+                        horizontal: 'center',
+                        vertical: 'center'
+                    };
+                    
                     // Style header row
                     if (R === 0) {
                         ws[cellAddress].s.fill = {
@@ -894,10 +920,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         ws[cellAddress].s.font = {
                             bold: true,
                             color: { rgb: 'FFFFFF' }
-                        };
-                        ws[cellAddress].s.alignment = {
-                            horizontal: 'center',
-                            vertical: 'center'
                         };
                     }
                 }
@@ -912,19 +934,51 @@ document.addEventListener('DOMContentLoaded', () => {
             XLSX.utils.book_append_sheet(wb, routersWS, 'Routers');
         }
 
-        // Export Switches - Access tables (from tabs)
+        // Export Switches - Access (consolidated from all tabs)
         const switchesAccessContainer = document.getElementById('switches-access-container');
         if (switchesAccessContainer) {
-            const accessTables = switchesAccessContainer.querySelectorAll('.subnet-enduser-table');
-            accessTables.forEach((subnetDiv) => {
-                const table = subnetDiv.querySelector('table');
-                if (table) {
-                    const subnetName = subnetDiv.querySelector('h4').textContent.split(' - ')[0];
-                    const ws = XLSX.utils.table_to_sheet(table);
-                    styleWorksheet(ws);
-                    XLSX.utils.book_append_sheet(wb, ws, `Access-${subnetName}`);
-                }
-            });
+            const accessTabContents = switchesAccessContainer.querySelectorAll('.subnet-tab-content');
+            if (accessTabContents.length > 0) {
+                // Collect all rows from all access switch tables with separation
+                const allAccessRows = [];
+                
+                // Get headers from first table
+                const firstTable = accessTabContents[0].querySelector('table');
+                const headerRow = [];
+                firstTable.querySelectorAll('thead th').forEach(th => {
+                    headerRow.push(th.textContent);
+                });
+                allAccessRows.push(headerRow);
+                
+                // Collect data rows from all tables with VLAN separation
+                accessTabContents.forEach((tabContent, index) => {
+                    const table = tabContent.querySelector('table');
+                    const vlanName = tabContent.querySelector('h4').textContent;
+                    
+                    // Add VLAN header row for separation
+                    const vlanHeaderRow = [vlanName, '', '', '', '', '', '', ''];
+                    allAccessRows.push(vlanHeaderRow);
+                    
+                    // Add data rows for this VLAN
+                    table.querySelectorAll('tbody tr').forEach(tr => {
+                        const rowData = [];
+                        tr.querySelectorAll('td').forEach(td => {
+                            rowData.push(td.textContent);
+                        });
+                        allAccessRows.push(rowData);
+                    });
+                    
+                    // Add empty row for separation (except after last VLAN)
+                    if (index < accessTabContents.length - 1) {
+                        allAccessRows.push(['', '', '', '', '', '', '', '']);
+                    }
+                });
+                
+                // Create worksheet from collected data
+                const accessWS = XLSX.utils.aoa_to_sheet(allAccessRows);
+                styleWorksheet(accessWS);
+                XLSX.utils.book_append_sheet(wb, accessWS, 'Switches-Access');
+            }
         }
 
         // Export Switches - Distribution table
@@ -935,20 +989,59 @@ document.addEventListener('DOMContentLoaded', () => {
             XLSX.utils.book_append_sheet(wb, switchesDistWS, 'Switches-Distribution');
         }
 
-        // Export each subnet's end-users table as a separate sheet
+        // Export all end-users in ONE consolidated sheet
         const endusersContainer = document.getElementById('endusers-container');
         if (endusersContainer) {
-            const subnetTables = endusersContainer.querySelectorAll('.subnet-enduser-table');
+            const subnetTabContents = endusersContainer.querySelectorAll('.subnet-tab-content');
             
-            subnetTables.forEach((subnetDiv, index) => {
-                const table = subnetDiv.querySelector('table');
-                if (table) {
-                    const subnetName = subnetDiv.querySelector('h4').textContent.split(' - ')[0]; // Remove PC count from name
-                    const ws = XLSX.utils.table_to_sheet(table);
-                    styleWorksheet(ws);
-                    XLSX.utils.book_append_sheet(wb, ws, `Users-${subnetName}`);
-                }
-            });
+            if (subnetTabContents.length > 0) {
+                // Collect all rows from all end-user tables with separation
+                const allUserRows = [];
+                
+                // Get headers from first table
+                const firstTable = subnetTabContents[0].querySelector('table');
+                const headerRow = [];
+                firstTable.querySelectorAll('thead th').forEach(th => {
+                    headerRow.push(th.textContent);
+                });
+                allUserRows.push(headerRow);
+                
+                // Collect data rows from all tables with VLAN separation
+                subnetTabContents.forEach((tabContent, index) => {
+                    const table = tabContent.querySelector('table');
+                    const vlanName = tabContent.querySelector('h4').textContent;
+                    
+                    // Add empty row before VLAN section (except for first VLAN)
+                    if (index > 0) {
+                        allUserRows.push(['', '', '', '', '', '', '', '']);
+                    }
+                    
+                    // Add VLAN header row for separation
+                    const vlanHeaderRow = [vlanName, '', '', '', '', '', '', ''];
+                    allUserRows.push(vlanHeaderRow);
+                    
+                    // Add column headers for this VLAN section
+                    const columnHeaders = [];
+                    table.querySelectorAll('thead th').forEach(th => {
+                        columnHeaders.push(th.textContent);
+                    });
+                    allUserRows.push(columnHeaders);
+                    
+                    // Add data rows for this VLAN
+                    table.querySelectorAll('tbody tr').forEach(tr => {
+                        const rowData = [];
+                        tr.querySelectorAll('td').forEach(td => {
+                            rowData.push(td.textContent);
+                        });
+                        allUserRows.push(rowData);
+                    });
+                });
+                
+                // Create worksheet from collected data
+                const usersWS = XLSX.utils.aoa_to_sheet(allUserRows);
+                styleWorksheet(usersWS);
+                XLSX.utils.book_append_sheet(wb, usersWS, 'End-Users');
+            }
         }
 
         // Save file
