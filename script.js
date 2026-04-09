@@ -128,21 +128,35 @@ document.addEventListener('DOMContentLoaded', () => {
         // Set CIDR prefix to 16
         document.getElementById('cidr').value = 16;
         
-        // Set subnet count to 4
-        subnetCountInput.value = 4;
+        // Set subnet count to 21
+        subnetCountInput.value = 21;
         
-        // Generate 4 subnet fields
-        generateSubnetFields(4);
+        // Generate 21 subnet fields
+        generateSubnetFields(21);
         
         // Fill in subnet names and host counts
         const testData = [
-            // G0/0 - 2 VLANs
-            { name: 'sales', hosts: 100 },
-            { name: 'marketing', hosts: 50 },
-            // G0/1 - 1 VLAN
-            { name: 'finance', hosts: 75 },
-            // G0/2 - 1 VLAN
-            { name: 'it', hosts: 30 }
+            { name: 'IT OJT', hosts: 110 },
+            { name: 'MID DEV', hosts: 110 },
+            { name: 'JR DEV', hosts: 90 },
+            { name: 'SR DEV', hosts: 90 },
+            { name: 'CLAIMS STAFF', hosts: 90 },
+            { name: 'TAXATION STAFF', hosts: 90 },
+            { name: 'ACCOUNTING STAFF', hosts: 90 },
+            { name: 'SR QA', hosts: 90 },
+            { name: 'MID QA', hosts: 90 },
+            { name: 'JR QA', hosts: 90 },
+            { name: 'DEV SUPP', hosts: 90 },
+            { name: 'IT SUPP', hosts: 80 },
+            { name: 'JR SALES', hosts: 70 },
+            { name: 'HR', hosts: 70 },
+            { name: 'SR SALES', hosts: 45 },
+            { name: 'ACCOUNTING MANAGER', hosts: 45 },
+            { name: 'IT MANAGER', hosts: 45 },
+            { name: 'ASST SALES', hosts: 45 },
+            { name: 'TIMEKEEP', hosts: 45 },
+            { name: 'IT DEV', hosts: 20 },
+            { name: 'SERVER', hosts: 16 }
         ];
         
         const nameInputs = document.querySelectorAll('.subnet-name-input');
@@ -153,12 +167,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (hostInputs[index]) hostInputs[index].value = data.hosts;
         });
         
-        // Configure interface groups: G0/0 with 2 VLANs, G0/1 with 1 VLAN, G0/2 with 1 VLAN
+        // Configure interface groups for 21 VLANs
         const container = document.getElementById('interface-groups-container');
         container.innerHTML = ''; // Clear existing groups
         interfaceGroups = []; // Reset array
         
-        // Add G0/0 with 2 VLANs
+        // Add G0/0 with 21 VLANs (all VLANs on one interface)
         const group0Div = document.createElement('div');
         group0Div.className = 'interface-group';
         group0Div.dataset.index = 0;
@@ -170,47 +184,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="vlan-count-wrapper">
                 <label>Number of VLANs on this interface:</label>
-                <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="2" />
+                <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="21" />
             </div>
         `;
         container.appendChild(group0Div);
-        interfaceGroups.push({ interface: 'G0/0', vlanCount: 2 });
-        
-        // Add G0/1 with 1 VLAN
-        const group1Div = document.createElement('div');
-        group1Div.className = 'interface-group';
-        group1Div.dataset.index = 1;
-        group1Div.innerHTML = `
-            <div class="interface-group-header">
-                <label>Gigabit Interface:</label>
-                <input type="text" class="interface-name" placeholder="e.g., G0/1" value="G0/1" />
-                <button class="btn-remove-interface" onclick="removeInterfaceGroup(1)">×</button>
-            </div>
-            <div class="vlan-count-wrapper">
-                <label>Number of VLANs on this interface:</label>
-                <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="1" />
-            </div>
-        `;
-        container.appendChild(group1Div);
-        interfaceGroups.push({ interface: 'G0/1', vlanCount: 1 });
-        
-        // Add G0/2 with 1 VLAN
-        const group2Div = document.createElement('div');
-        group2Div.className = 'interface-group';
-        group2Div.dataset.index = 2;
-        group2Div.innerHTML = `
-            <div class="interface-group-header">
-                <label>Gigabit Interface:</label>
-                <input type="text" class="interface-name" placeholder="e.g., G0/2" value="G0/2" />
-                <button class="btn-remove-interface" onclick="removeInterfaceGroup(2)">×</button>
-            </div>
-            <div class="vlan-count-wrapper">
-                <label>Number of VLANs on this interface:</label>
-                <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="1" />
-            </div>
-        `;
-        container.appendChild(group2Div);
-        interfaceGroups.push({ interface: 'G0/2', vlanCount: 1 });
+        interfaceGroups.push({ interface: 'G0/0', vlanCount: 21 });
         
         // Show success message
         const btn = document.getElementById('debug-autofill');
@@ -1274,4 +1252,235 @@ originalCalculateHandler.addEventListener('click', () => {
         msgDiv.style.display = 'none';
         dnsChanged = false;
     }
+});
+
+
+// Export Template Format functionality
+document.getElementById('export-template').addEventListener('click', () => {
+    const wb = XLSX.utils.book_new();
+    
+    // Get the generated VLSM results
+    const resultsTable = document.querySelector('.results-table');
+    if (!resultsTable) {
+        alert('Please generate subnets first before exporting!');
+        return;
+    }
+    
+    // Get the original input values for needed size (requested hosts)
+    const hostInputs = document.querySelectorAll('.host-count-input');
+    const requestedHosts = Array.from(hostInputs).map(input => parseInt(input.value) || 0);
+    
+    // Collect subnet data from the results table
+    const subnetData = [];
+    const rows = resultsTable.querySelectorAll('tbody tr');
+    rows.forEach((row, index) => {
+        const cells = row.querySelectorAll('td');
+        const neededSize = requestedHosts[index] || parseInt(cells[7].textContent);
+        
+        subnetData.push({
+            name: cells[0].textContent,
+            networkAddress: cells[1].textContent,
+            subnetMask: cells[2].textContent,
+            firstUsable: cells[3].textContent,
+            lastUsable: cells[4].textContent,
+            broadcast: cells[5].textContent,
+            wildcard: cells[6].textContent,
+            usableHosts: cells[7].textContent,
+            neededSize: neededSize
+        });
+    });
+    
+    // Get VLAN configuration
+    const startingVlan = parseInt(document.getElementById('starting-vlan').value) || 10;
+    const vlanIncrement = parseInt(document.getElementById('vlan-increment').value) || 10;
+    const baseNetwork = document.getElementById('network-ip').value.trim();
+    const cidr = document.getElementById('cidr').value;
+    
+    // ==================== SHEET 1: Branch 1 - IPv4 VLSM Documentation ====================
+    const branch1Data = [];
+    
+    // Title row
+    branch1Data.push(['Branch 1 - IPv4 VLSM Documentation']);
+    branch1Data.push(['']); // Empty row
+    
+    // Network Administrator Name row
+    branch1Data.push(['Network Administrator Name', '', '', '', '', '', '', '', '', '', 'Andrei Nico A. Samonte']);
+    
+    // Base Network row
+    branch1Data.push(['Base Network', '', '', '', '', '', '', '', '', '', baseNetwork]);
+    
+    // Header row
+    branch1Data.push([
+        'Network Name',
+        'Needed Size',
+        'Number of Switch',
+        'Total no. of Hosts',
+        'Network Address',
+        'CIDR Prefix',
+        'Subnet Mask',
+        'First Usable Address',
+        'Last Usable Address',
+        'Broadcast Address',
+        'Wildcard Mask'
+    ]);
+    
+    // Add data rows for each subnet
+    subnetData.forEach((subnet, index) => {
+        const neededSize = subnet.neededSize;
+        const numSwitches = Math.ceil(neededSize / 24);
+        const totalHosts = neededSize + numSwitches + 3;
+        const cidrMatch = subnet.networkAddress.match(/\/(\d+)/);
+        const subnetCidr = cidrMatch ? `/${cidrMatch[1]}` : '';
+        const networkAddr = subnet.networkAddress.split('/')[0];
+        
+        branch1Data.push([
+            subnet.name,
+            neededSize,
+            numSwitches,
+            totalHosts,
+            networkAddr,
+            subnetCidr,
+            subnet.subnetMask,
+            subnet.firstUsable,
+            subnet.lastUsable,
+            subnet.broadcast,
+            subnet.wildcard
+        ]);
+    });
+    
+    // Create Branch 1 worksheet
+    const wsBranch1 = XLSX.utils.aoa_to_sheet(branch1Data);
+    
+    // Set column widths for Branch 1
+    wsBranch1['!cols'] = [
+        { wch: 25 }, { wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
+        { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 18 }
+    ];
+    
+    // Merge cells for title
+    wsBranch1['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 9 } }
+    ];
+    
+    // Apply styling to Branch 1
+    const rangeBranch1 = XLSX.utils.decode_range(wsBranch1['!ref']);
+    for (let R = rangeBranch1.s.r; R <= rangeBranch1.e.r; ++R) {
+        for (let C = rangeBranch1.s.c; C <= rangeBranch1.e.c; ++C) {
+            const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+            if (!wsBranch1[cellAddress]) wsBranch1[cellAddress] = { t: 's', v: '' };
+            if (!wsBranch1[cellAddress].s) wsBranch1[cellAddress].s = {};
+            
+            wsBranch1[cellAddress].s.border = {
+                top: { style: 'thin' }, bottom: { style: 'thin' },
+                left: { style: 'thin' }, right: { style: 'thin' }
+            };
+            wsBranch1[cellAddress].s.alignment = { horizontal: 'center', vertical: 'center' };
+            
+            if (R === 0) {
+                wsBranch1[cellAddress].s.fill = { fgColor: { rgb: 'D3D3D3' } };
+                wsBranch1[cellAddress].s.font = { bold: true, size: 14 };
+            }
+            if (R === 4) {
+                wsBranch1[cellAddress].s.fill = { fgColor: { rgb: '4472C4' } };
+                wsBranch1[cellAddress].s.font = { bold: true, color: { rgb: 'FFFFFF' } };
+            }
+        }
+    }
+    
+    // ==================== SHEET 2: VLSM ====================
+    const vlsmData = [];
+    
+    // Header row
+    vlsmData.push([
+        'Name', 'Vlan', 'Needed Size', 'Switch', 'Router', 'Total Host',
+        'Network Address', 'Slash', 'Mask', 'Usable Range', '',
+        'Broadcast', 'IPV6', 'IPV6 DEFAULT GATEWAY'
+    ]);
+    
+    // Get IPv6 data from the routers table
+    const routersTable = document.getElementById('routers-table');
+    const routerRows = routersTable ? routersTable.querySelectorAll('tbody tr') : [];
+    
+    // Create a map of VLAN names to IPv6 addresses
+    const ipv6Map = {};
+    routerRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 8) {
+            const vlanName = cells[1].textContent.trim();
+            const ipv6Address = cells[6].textContent.trim();
+            const ipv6Gateway = cells[7].textContent.trim();
+            
+            if (vlanName && ipv6Address) {
+                ipv6Map[vlanName] = {
+                    address: ipv6Address,
+                    gateway: ipv6Gateway
+                };
+            }
+        }
+    });
+    
+    // Add data rows
+    subnetData.forEach((subnet, index) => {
+        const vlanId = startingVlan + (index * vlanIncrement);
+        const neededSize = subnet.neededSize;
+        const numSwitches = Math.ceil(neededSize / 24);
+        const numRouters = 3;
+        const totalHosts = neededSize + numSwitches + numRouters;
+        
+        const cidrMatch = subnet.networkAddress.match(/\/(\d+)/);
+        const subnetCidr = cidrMatch ? `/${cidrMatch[1]}` : '';
+        const networkAddr = subnet.networkAddress.split('/')[0];
+        const usableRange = `${subnet.firstUsable} - ${subnet.lastUsable}`;
+        
+        // Get IPv6 from the map, or use empty string if not found
+        const ipv6Data = ipv6Map[subnet.name] || { address: '', gateway: '' };
+        const ipv6Addr = ipv6Data.address;
+        const ipv6Gateway = ipv6Data.gateway;
+        
+        vlsmData.push([
+            subnet.name, vlanId, neededSize, numSwitches, numRouters, totalHosts,
+            networkAddr, subnetCidr, subnet.subnetMask, usableRange, '',
+            subnet.broadcast, ipv6Addr, ipv6Gateway
+        ]);
+    });
+    
+    // Create VLSM worksheet
+    const wsVLSM = XLSX.utils.aoa_to_sheet(vlsmData);
+    
+    // Set column widths for VLSM
+    wsVLSM['!cols'] = [
+        { wch: 20 }, { wch: 8 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
+        { wch: 18 }, { wch: 8 }, { wch: 18 }, { wch: 30 }, { wch: 2 },
+        { wch: 18 }, { wch: 20 }, { wch: 25 }
+    ];
+    
+    // Apply styling to VLSM
+    const rangeVLSM = XLSX.utils.decode_range(wsVLSM['!ref']);
+    for (let R = rangeVLSM.s.r; R <= rangeVLSM.e.r; ++R) {
+        for (let C = rangeVLSM.s.c; C <= rangeVLSM.e.c; ++C) {
+            const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+            if (!wsVLSM[cellAddress]) wsVLSM[cellAddress] = { t: 's', v: '' };
+            if (!wsVLSM[cellAddress].s) wsVLSM[cellAddress].s = {};
+            
+            wsVLSM[cellAddress].s.border = {
+                top: { style: 'thin' }, bottom: { style: 'thin' },
+                left: { style: 'thin' }, right: { style: 'thin' }
+            };
+            wsVLSM[cellAddress].s.alignment = { horizontal: 'center', vertical: 'center' };
+            
+            if (R === 0) {
+                wsVLSM[cellAddress].s.fill = { fgColor: { rgb: '4472C4' } };
+                wsVLSM[cellAddress].s.font = { bold: true, color: { rgb: 'FFFFFF' } };
+            }
+        }
+    }
+    
+    // Add worksheets to workbook
+    XLSX.utils.book_append_sheet(wb, wsBranch1, 'Branch 1');
+    XLSX.utils.book_append_sheet(wb, wsVLSM, 'VLSM');
+    
+    // Save file
+    XLSX.writeFile(wb, 'VLSM_Documentation.xlsx');
 });
