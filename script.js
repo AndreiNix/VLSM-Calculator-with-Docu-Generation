@@ -60,13 +60,13 @@ function calculateVLSM(networkIP, cidr, subnets) {
 
     for (const subnet of sortedSubnets) {
         const requiredPrefix = calculateRequiredPrefix(subnet.hosts);
-        
+
         if (requiredPrefix < cidr) {
             return { error: `Subnet "${subnet.name}" requires too many hosts for the given network` };
         }
 
         const subnetSize = Math.pow(2, 32 - requiredPrefix);
-        
+
         // Align to subnet boundary
         const remainder = currentIP % subnetSize;
         if (remainder !== 0) {
@@ -124,16 +124,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('debug-autofill').addEventListener('click', () => {
         // Set network IP to 192.168.0.0
         document.getElementById('network-ip').value = '192.168.0.0';
-        
+
         // Set CIDR prefix to 16
         document.getElementById('cidr').value = 16;
-        
+
         // Set subnet count to 21
         subnetCountInput.value = 21;
-        
+
         // Generate 21 subnet fields
         generateSubnetFields(21);
-        
+
         // Fill in subnet names and host counts
         const testData = [
             { name: 'IT OJT', hosts: 110 },
@@ -157,21 +157,23 @@ document.addEventListener('DOMContentLoaded', () => {
             { name: 'TIMEKEEP', hosts: 45 },
             { name: 'IT DEV', hosts: 20 },
             { name: 'SERVER', hosts: 16 }
+
+
         ];
-        
+
         const nameInputs = document.querySelectorAll('.subnet-name-input');
         const hostInputs = document.querySelectorAll('.host-count-input');
-        
+
         testData.forEach((data, index) => {
             if (nameInputs[index]) nameInputs[index].value = data.name;
             if (hostInputs[index]) hostInputs[index].value = data.hosts;
         });
-        
+
         // Configure interface groups for 21 VLANs
         const container = document.getElementById('interface-groups-container');
         container.innerHTML = ''; // Clear existing groups
         interfaceGroups = []; // Reset array
-        
+
         // Add G0/0 with 21 VLANs (all VLANs on one interface)
         const group0Div = document.createElement('div');
         group0Div.className = 'interface-group';
@@ -189,13 +191,13 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         container.appendChild(group0Div);
         interfaceGroups.push({ interface: 'G0/0', vlanCount: 21 });
-        
+
         // Show success message
         const btn = document.getElementById('debug-autofill');
         const originalText = btn.textContent;
         btn.textContent = '✓ Autofilled!';
         btn.style.background = '#10b981';
-        
+
         setTimeout(() => {
             btn.textContent = originalText;
             btn.style.background = '';
@@ -323,20 +325,20 @@ document.addEventListener('DOMContentLoaded', () => {
         switchesDistTbody.innerHTML = '';
         endusersContainer.innerHTML = '';
 
-            // Generate router entries based on interface groups
+        // Generate router entries based on interface groups
         const interfaceGroups = getInterfaceGroups();
         const startingVlan = parseInt(document.getElementById('starting-vlan').value) || 10;
         const vlanIncrement = parseInt(document.getElementById('vlan-increment').value) || 10;
-        
+
         let subnetIndex = 0;
         let currentVlanId = startingVlan;
-        
+
         // Store VLAN to IPv6 mapping for end-users
         const vlanToIPv6Map = {};
-        
+
         interfaceGroups.forEach((group, groupIndex) => {
             let vlansOnThisInterface = 0;
-            
+
             // Add base interface row (e.g., G0/0)
             if (subnetIndex < subnets.length) {
                 const subnet = subnets[subnetIndex];
@@ -353,30 +355,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 routersTbody.appendChild(row);
             }
-            
+
             // Add subinterfaces for this gigabit interface
             while (vlansOnThisInterface < group.vlanCount && subnetIndex < subnets.length) {
                 const subnet = subnets[subnetIndex];
                 const interfaceName = `${group.interface}.${currentVlanId}`;
-                
+
                 // Store VLAN ID mapping for end-users (always store, not just when IPv6 is set)
                 if (!vlanToIPv6Map[subnetIndex]) {
                     vlanToIPv6Map[subnetIndex] = {};
                 }
                 vlanToIPv6Map[subnetIndex].vlanId = currentVlanId;
-                
+
                 // Generate IPv6 addresses if prefix is set
                 let ipv6Addr = '';
                 let ipv6Gateway = '';
                 if (ipv6Prefix) {
                     ipv6Addr = generateIPv6Address(currentVlanId, ipv6Prefix, ipv6Format);
                     ipv6Gateway = generateIPv6Gateway(currentVlanId, ipv6Prefix, ipv6Format);
-                    
+
                     // Store IPv6 mapping for end-users
                     vlanToIPv6Map[subnetIndex].ipv6Address = ipv6Addr;
                     vlanToIPv6Map[subnetIndex].ipv6Gateway = ipv6Addr; // Use the router's IPv6 address as gateway for users
                 }
-                
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${currentVlanId}</td>
@@ -389,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${ipv6Gateway}</td>
                 `;
                 routersTbody.appendChild(row);
-                
+
                 currentVlanId += vlanIncrement;
                 vlansOnThisInterface++;
                 subnetIndex++;
@@ -410,16 +412,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             vlanAccessSwitchCounts.push(numAccessSwitches);
         });
-        
+
         // Redistribute VLANs across router interfaces based on VLAN encapsulation
         const redistributedRouterInterfaces = [];
         let currentRouterInterfaceIndex = 0;
         let currentVlans = [];
-        
+
         subnets.forEach((subnet, index) => {
             const vlanId = startingVlan + (index * vlanIncrement);
             const numAccessSwitches = vlanAccessSwitchCounts[index];
-            
+
             // Check if we need to move to the next router interface based on VLAN count
             const currentInterfaceGroup = interfaceGroups[currentRouterInterfaceIndex];
             if (currentInterfaceGroup && currentVlans.length >= currentInterfaceGroup.vlanCount) {
@@ -431,21 +433,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                 }
                 redistributedRouterInterfaces[currentRouterInterfaceIndex].vlans.push(...currentVlans);
-                
+
                 // Move to next router interface
                 currentRouterInterfaceIndex++;
                 currentVlans = [];
             }
-            
+
             // Calculate IP addresses
             const lastIP = subnet.lastUsable.split('.').map(Number);
-            
+
             const secondToLastIP = [...lastIP];
             secondToLastIP[3] -= 1;
-            
+
             const thirdToLastIP = [...lastIP];
             thirdToLastIP[3] -= 2;
-            
+
             // Handle underflow for second-to-last
             for (let octet = 3; octet > 0; octet--) {
                 if (secondToLastIP[octet] < 0) {
@@ -453,7 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     secondToLastIP[octet - 1]--;
                 }
             }
-            
+
             // Handle underflow for third-to-last
             for (let octet = 3; octet > 0; octet--) {
                 if (thirdToLastIP[octet] < 0) {
@@ -461,10 +463,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     thirdToLastIP[octet - 1]--;
                 }
             }
-            
+
             const secondToLastUsable = secondToLastIP.join('.');
             const thirdToLastUsable = thirdToLastIP.join('.');
-            
+
             currentVlans.push({
                 subnet: subnet,
                 vlanId: vlanId,
@@ -473,7 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 thirdToLastUsable: thirdToLastUsable
             });
         });
-        
+
         // Add the last group
         if (currentVlans.length > 0) {
             if (!redistributedRouterInterfaces[currentRouterInterfaceIndex]) {
@@ -484,23 +486,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             redistributedRouterInterfaces[currentRouterInterfaceIndex].vlans.push(...currentVlans);
         }
-        
+
         // Second pass: generate switches for each router interface
         redistributedRouterInterfaces.forEach((routerInterfaceData, routerInterfaceIndex) => {
             const vlansOnThisInterface = routerInterfaceData.vlans;
             const routerInterface = routerInterfaceData.routerInterface;
-            
+
             // Group VLANs by distribution switch based on VLAN encapsulation
             // All VLANs on the same router interface go to the same distribution switch
             const distributionGroups = [];
-            
+
             // Single distribution group for all VLANs on this router interface
             distributionGroups.push(vlansOnThisInterface);
-            
+
             // Generate distribution switches
             distributionGroups.forEach((distGroup, distIndex) => {
                 const distSwitchName = `${routerInterface}-dist-switch`;
-                
+
                 // Add distribution switch g0/1 row (uplink to router)
                 const distTrunkRow = document.createElement('tr');
                 distTrunkRow.innerHTML = `
@@ -514,7 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td></td>
                 `;
                 switchesDistTbody.appendChild(distTrunkRow);
-                
+
                 // Add FastEthernet rows for VLANs on this distribution
                 let portOffset = 0;
                 distGroup.forEach((vlanInfo) => {
@@ -522,10 +524,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const faPortEnd = portOffset + vlanInfo.numAccessSwitches;
                     const faPortRange = vlanInfo.numAccessSwitches === 1 ? `fa0/${faPortStart}` : `fa0/${faPortStart}-${faPortEnd}`;
                     portOffset += vlanInfo.numAccessSwitches;
-                    
+
                     // Use second-to-last IP for distribution switch
                     const ipForThisDist = vlanInfo.secondToLastUsable;
-                    
+
                     const distFaRow = document.createElement('tr');
                     distFaRow.innerHTML = `
                         <td></td>
@@ -539,20 +541,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                     switchesDistTbody.appendChild(distFaRow);
                 });
-                
+
                 // Generate access switches for all VLANs on this distribution
                 distGroup.forEach((vlanInfo) => {
                     // Access switches start at 3rd-to-last IP
                     const ipOffset = 2;
-                    
+
                     for (let accessNum = 1; accessNum <= vlanInfo.numAccessSwitches; accessNum++) {
                         const accessSwitchName = `${vlanInfo.subnet.name}-access-switch${accessNum}`;
-                        
+
                         // Calculate IP for this access switch
                         const lastIP = vlanInfo.subnet.lastUsable.split('.').map(Number);
                         const accessSwitchIP = [...lastIP];
                         accessSwitchIP[3] -= (ipOffset + (accessNum - 1));
-                        
+
                         // Handle underflow
                         for (let octet = 3; octet > 0; octet--) {
                             if (accessSwitchIP[octet] < 0) {
@@ -560,9 +562,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 accessSwitchIP[octet - 1]--;
                             }
                         }
-                        
+
                         const accessSwitchIPStr = accessSwitchIP.join('.');
-                        
+
                         // Store access switch data for tab organization
                         if (!vlanInfo.accessSwitches) {
                             vlanInfo.accessSwitches = [];
@@ -577,28 +579,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
         });
-        
+
         // Create tabs for switches access section
         const switchesAccessTabsContainer = document.createElement('div');
         switchesAccessTabsContainer.className = 'subnet-tabs';
         switchesAccessContainer.appendChild(switchesAccessTabsContainer);
-        
+
         const switchesAccessContentContainer = document.createElement('div');
         switchesAccessContentContainer.className = 'subnet-tabs-content';
         switchesAccessContainer.appendChild(switchesAccessContentContainer);
-        
+
         // Generate tabs for each VLAN
         redistributedRouterInterfaces.forEach((routerInterfaceData) => {
             routerInterfaceData.vlans.forEach((vlanInfo, vlanIndex) => {
                 const isFirst = routerInterfaceData === redistributedRouterInterfaces[0] && vlanIndex === 0;
-                
+
                 // Create tab button
                 const tabButton = document.createElement('button');
                 tabButton.className = 'subnet-tab' + (isFirst ? ' active' : '');
                 tabButton.textContent = vlanInfo.subnet.name;
                 tabButton.dataset.vlanId = vlanInfo.vlanId;
                 switchesAccessTabsContainer.appendChild(tabButton);
-                
+
                 // Create tab content
                 const tabContent = document.createElement('div');
                 tabContent.className = 'subnet-tab-content' + (isFirst ? ' active' : '');
@@ -624,9 +626,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
                 switchesAccessContentContainer.appendChild(tabContent);
-                
+
                 const tbody = tabContent.querySelector('tbody');
-                
+
                 // Add access switches for this VLAN
                 if (vlanInfo.accessSwitches) {
                     vlanInfo.accessSwitches.forEach((accessSwitch) => {
@@ -643,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td></td>
                         `;
                         tbody.appendChild(trunkRow);
-                        
+
                         // Add fa0/1-24 row (access ports)
                         const accessRow = document.createElement('tr');
                         accessRow.innerHTML = `
@@ -661,19 +663,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
-        
+
         // Add tab click handlers for switches access
         const switchesAccessTabButtons = switchesAccessTabsContainer.querySelectorAll('.subnet-tab');
         switchesAccessTabButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const targetVlanId = button.dataset.vlanId;
-                
+
                 // Remove active class from all tabs and contents
                 switchesAccessTabButtons.forEach(btn => btn.classList.remove('active'));
                 switchesAccessContentContainer.querySelectorAll('.subnet-tab-content').forEach(content => {
                     content.classList.remove('active');
                 });
-                
+
                 // Add active class to clicked tab and corresponding content
                 button.classList.add('active');
                 switchesAccessContentContainer.querySelector(`[data-vlan-id="${targetVlanId}"]`).classList.add('active');
@@ -684,18 +686,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabsContainer = document.createElement('div');
         tabsContainer.className = 'subnet-tabs';
         endusersContainer.appendChild(tabsContainer);
-        
+
         // Create content container
         const contentContainer = document.createElement('div');
         contentContainer.className = 'subnet-tabs-content';
         endusersContainer.appendChild(contentContainer);
-        
+
         let totalPCsGenerated = 0;
         let subnetDebugInfo = [];
-        
+
         subnets.forEach((subnet, subnetIndex) => {
             const usersInThisSubnet = subnet.requestedHosts; // Use the requested hosts as number of PCs
-            
+
             // Get VLAN ID for this subnet
             const ipv6Info = vlanToIPv6Map[subnetIndex] || {};
             const vlanId = ipv6Info.vlanId || '';
@@ -737,14 +739,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Parse the first usable IP
             const firstIP = subnet.firstUsable.split('.').map(Number);
-            
+
             for (let i = 0; i < usersInThisSubnet; i++) {
                 totalPCsGenerated++;
-                
+
                 // Calculate IP address for this user
                 let currentIP = [...firstIP];
                 currentIP[3] += i;
-                
+
                 // Handle overflow
                 for (let octet = 3; octet > 0; octet--) {
                     if (currentIP[octet] > 255) {
@@ -752,21 +754,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentIP[octet - 1]++;
                     }
                 }
-                
+
                 const userIP = currentIP.join('.');
-                
+
                 // Create device name with subnet name prefix
                 const deviceName = `${subnet.name}PC${i + 1}`;
-                
+
                 // Get IPv6 info for this subnet
                 const userIPv6Gateway = ipv6Info.ipv6Gateway || '';
-                
+
                 // Generate user IPv6 address if prefix is configured
                 let userIPv6Address = '';
                 if (ipv6Prefix && ipv6Info.vlanId) {
                     userIPv6Address = generateUserIPv6Address(ipv6Info.vlanId, i, ipv6Prefix, ipv6Format);
                 }
-                
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${deviceName}</td>
@@ -780,46 +782,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 tbody.appendChild(row);
             }
-            
+
             // Store debug info for this subnet
             subnetDebugInfo.push({
                 name: subnet.name,
                 pcCount: usersInThisSubnet
             });
         });
-        
+
         // Add tab click handlers
         const tabButtons = tabsContainer.querySelectorAll('.subnet-tab');
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const targetIndex = button.dataset.subnetIndex;
-                
+
                 // Remove active class from all tabs and contents
                 tabButtons.forEach(btn => btn.classList.remove('active'));
                 contentContainer.querySelectorAll('.subnet-tab-content').forEach(content => {
                     content.classList.remove('active');
                 });
-                
+
                 // Add active class to clicked tab and corresponding content
                 button.classList.add('active');
                 contentContainer.querySelector(`[data-subnet-index="${targetIndex}"]`).classList.add('active');
             });
         });
-        
+
         // Display debug information
         displayDebugInfo(totalPCsGenerated, subnets.length, subnetDebugInfo);
 
         // Show documentation section
         document.getElementById('documentation-section').style.display = 'block';
     }
-    
+
     function displayDebugInfo(totalPCs, totalSubnets, subnetInfo) {
         const debugDiv = document.getElementById('debug-info');
-        
-        let subnetDetails = subnetInfo.map(info => 
+
+        let subnetDetails = subnetInfo.map(info =>
             `<span class="subnet-debug"><strong>${info.name}</strong> ${info.pcCount} PCs</span>`
         ).join('');
-        
+
         debugDiv.innerHTML = `
             <h4>📊 Network Summary</h4>
             <div class="debug-stats">
@@ -847,7 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Function to add borders and styling to worksheet
         function styleWorksheet(ws, rowCount, colCount) {
             const range = XLSX.utils.decode_range(ws['!ref']);
-            
+
             // Auto-width columns
             const colWidths = [];
             for (let C = range.s.c; C <= range.e.c; ++C) {
@@ -871,11 +873,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!ws[cellAddress]) {
                         ws[cellAddress] = { t: 's', v: '' };
                     }
-                    
+
                     if (!ws[cellAddress].s) {
                         ws[cellAddress].s = {};
                     }
-                    
+
                     // Add borders
                     ws[cellAddress].s.border = {
                         top: { style: 'thin', color: { rgb: '000000' } },
@@ -883,13 +885,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         left: { style: 'thin', color: { rgb: '000000' } },
                         right: { style: 'thin', color: { rgb: '000000' } }
                     };
-                    
+
                     // Center alignment for all cells
                     ws[cellAddress].s.alignment = {
                         horizontal: 'center',
                         vertical: 'center'
                     };
-                    
+
                     // Style header row
                     if (R === 0) {
                         ws[cellAddress].s.fill = {
@@ -919,7 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (accessTabContents.length > 0) {
                 // Collect all rows from all access switch tables with separation
                 const allAccessRows = [];
-                
+
                 // Get headers from first table
                 const firstTable = accessTabContents[0].querySelector('table');
                 const headerRow = [];
@@ -927,16 +929,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     headerRow.push(th.textContent);
                 });
                 allAccessRows.push(headerRow);
-                
+
                 // Collect data rows from all tables with VLAN separation
                 accessTabContents.forEach((tabContent, index) => {
                     const table = tabContent.querySelector('table');
                     const vlanName = tabContent.querySelector('h4').textContent;
-                    
+
                     // Add VLAN header row for separation
                     const vlanHeaderRow = [vlanName, '', '', '', '', '', '', ''];
                     allAccessRows.push(vlanHeaderRow);
-                    
+
                     // Add data rows for this VLAN
                     table.querySelectorAll('tbody tr').forEach(tr => {
                         const rowData = [];
@@ -945,13 +947,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         allAccessRows.push(rowData);
                     });
-                    
+
                     // Add empty row for separation (except after last VLAN)
                     if (index < accessTabContents.length - 1) {
                         allAccessRows.push(['', '', '', '', '', '', '', '']);
                     }
                 });
-                
+
                 // Create worksheet from collected data
                 const accessWS = XLSX.utils.aoa_to_sheet(allAccessRows);
                 styleWorksheet(accessWS);
@@ -971,11 +973,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const endusersContainer = document.getElementById('endusers-container');
         if (endusersContainer) {
             const subnetTabContents = endusersContainer.querySelectorAll('.subnet-tab-content');
-            
+
             if (subnetTabContents.length > 0) {
                 // Collect all rows from all end-user tables with separation
                 const allUserRows = [];
-                
+
                 // Get headers from first table
                 const firstTable = subnetTabContents[0].querySelector('table');
                 const headerRow = [];
@@ -983,28 +985,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     headerRow.push(th.textContent);
                 });
                 allUserRows.push(headerRow);
-                
+
                 // Collect data rows from all tables with VLAN separation
                 subnetTabContents.forEach((tabContent, index) => {
                     const table = tabContent.querySelector('table');
                     const vlanName = tabContent.querySelector('h4').textContent;
-                    
+
                     // Add empty row before VLAN section (except for first VLAN)
                     if (index > 0) {
                         allUserRows.push(['', '', '', '', '', '', '', '']);
                     }
-                    
+
                     // Add VLAN header row for separation
                     const vlanHeaderRow = [vlanName, '', '', '', '', '', '', ''];
                     allUserRows.push(vlanHeaderRow);
-                    
+
                     // Add column headers for this VLAN section
                     const columnHeaders = [];
                     table.querySelectorAll('thead th').forEach(th => {
                         columnHeaders.push(th.textContent);
                     });
                     allUserRows.push(columnHeaders);
-                    
+
                     // Add data rows for this VLAN
                     table.querySelectorAll('tbody tr').forEach(tr => {
                         const rowData = [];
@@ -1014,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         allUserRows.push(rowData);
                     });
                 });
-                
+
                 // Create worksheet from collected data
                 const usersWS = XLSX.utils.aoa_to_sheet(allUserRows);
                 styleWorksheet(usersWS);
@@ -1041,7 +1043,7 @@ let settingsConfigured = false;
 function generateIPv6Address(vlanId, prefix, format) {
     // Remove any trailing colons or slashes from prefix
     prefix = prefix.replace(/[:\/]+$/, '');
-    
+
     if (format === 'vlan-pattern') {
         // Format: FD00:10:10:10::1/64 (VLAN ID in decimal, repeated in pattern)
         return `${prefix}:${vlanId}:${vlanId}:${vlanId}::1/64`;
@@ -1054,7 +1056,7 @@ function generateIPv6Address(vlanId, prefix, format) {
 // Function to generate IPv6 gateway address
 function generateIPv6Gateway(vlanId, prefix, format) {
     prefix = prefix.replace(/[:\/]+$/, '');
-    
+
     if (format === 'vlan-pattern') {
         // Gateway format: FD00:10:10:10::/64 (ends with :: not ::1)
         return `${prefix}:${vlanId}:${vlanId}:${vlanId}::/64`;
@@ -1068,7 +1070,7 @@ function generateIPv6Gateway(vlanId, prefix, format) {
 function generateUserIPv6Address(vlanId, userIndex, prefix, format) {
     prefix = prefix.replace(/[:\/]+$/, '');
     const hostNumber = userIndex + 2; // Start from ::2 (::1 is the router)
-    
+
     if (format === 'vlan-pattern') {
         // Format: FD00:10:10:10::2/64, FD00:10:10:10::3/64, etc.
         return `${prefix}:${vlanId}:${vlanId}:${vlanId}::${hostNumber}/64`;
@@ -1081,24 +1083,24 @@ function generateUserIPv6Address(vlanId, userIndex, prefix, format) {
 // Interface Groups Management
 let interfaceGroups = [];
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Add initial interface group
     addInterfaceGroup();
-    
+
     document.getElementById('add-interface-group').addEventListener('click', addInterfaceGroup);
-    
+
     // Tab switching functionality
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
-    
+
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
             const targetTab = button.dataset.tab;
-            
+
             // Remove active class from all buttons and contents
             tabButtons.forEach(btn => btn.classList.remove('active'));
             tabContents.forEach(content => content.classList.remove('active'));
-            
+
             // Add active class to clicked button and corresponding content
             button.classList.add('active');
             document.getElementById(targetTab).classList.add('active');
@@ -1109,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function addInterfaceGroup() {
     const container = document.getElementById('interface-groups-container');
     const groupIndex = interfaceGroups.length;
-    
+
     const groupDiv = document.createElement('div');
     groupDiv.className = 'interface-group';
     groupDiv.dataset.index = groupIndex;
@@ -1124,7 +1126,7 @@ function addInterfaceGroup() {
             <input type="number" class="vlan-count" placeholder="VLANs" min="1" value="5" />
         </div>
     `;
-    
+
     container.appendChild(groupDiv);
     interfaceGroups.push({ interface: `G0/${groupIndex}`, vlanCount: 5 });
 }
@@ -1140,19 +1142,19 @@ function removeInterfaceGroup(index) {
 function getInterfaceGroups() {
     const groups = [];
     const groupDivs = document.querySelectorAll('.interface-group');
-    
+
     groupDivs.forEach(div => {
         const interfaceName = div.querySelector('.interface-name').value.trim();
         const vlanCount = parseInt(div.querySelector('.vlan-count').value) || 1;
-        
+
         if (interfaceName) {
-            groups.push({ 
-                interface: interfaceName, 
+            groups.push({
+                interface: interfaceName,
                 vlanCount: vlanCount
             });
         }
     });
-    
+
     return groups;
 }
 
@@ -1162,15 +1164,15 @@ document.getElementById('set-ipv4-dns').addEventListener('click', () => {
         ipv4DNS = value;
         dnsChanged = true;
         settingsConfigured = true;
-        
+
         // Show success indicator
         const btn = document.getElementById('set-ipv4-dns');
         btn.textContent = '✓ DNS Set';
         btn.style.background = '#10b981';
-        
+
         // Show regenerate message
         showRegenerateMessage();
-        
+
         setTimeout(() => {
             btn.textContent = 'Set DNS Server';
             btn.style.background = '';
@@ -1186,15 +1188,15 @@ document.getElementById('set-ipv6-dns').addEventListener('click', () => {
         ipv6DNS = value;
         dnsChanged = true;
         settingsConfigured = true;
-        
+
         // Show success indicator
         const btn = document.getElementById('set-ipv6-dns');
         btn.textContent = '✓ IPv6 DNS Set';
         btn.style.background = '#10b981';
-        
+
         // Show regenerate message
         showRegenerateMessage();
-        
+
         setTimeout(() => {
             btn.textContent = 'Set IPv6';
             btn.style.background = '';
@@ -1207,22 +1209,22 @@ document.getElementById('set-ipv6-dns').addEventListener('click', () => {
 document.getElementById('generate-ipv6').addEventListener('click', () => {
     const prefix = document.getElementById('ipv6-prefix').value.trim();
     const format = document.getElementById('ipv6-format').value;
-    
+
     if (prefix) {
         ipv6Prefix = prefix;
         ipv6Format = format;
         ipv6Addresses = {}; // Reset addresses
         dnsChanged = true;
         settingsConfigured = true;
-        
+
         // Show success indicator
         const btn = document.getElementById('generate-ipv6');
         btn.textContent = '✓ IPv6 Generated';
         btn.style.background = '#10b981';
-        
+
         // Show regenerate message
         showRegenerateMessage();
-        
+
         setTimeout(() => {
             btn.textContent = 'Generate IPv6 Addresses';
             btn.style.background = '';
@@ -1258,25 +1260,25 @@ originalCalculateHandler.addEventListener('click', () => {
 // Export Template Format functionality
 document.getElementById('export-template').addEventListener('click', () => {
     const wb = XLSX.utils.book_new();
-    
+
     // Get the generated VLSM results
     const resultsTable = document.querySelector('.results-table');
     if (!resultsTable) {
         alert('Please generate subnets first before exporting!');
         return;
     }
-    
+
     // Get the original input values for needed size (requested hosts)
     const hostInputs = document.querySelectorAll('.host-count-input');
     const requestedHosts = Array.from(hostInputs).map(input => parseInt(input.value) || 0);
-    
+
     // Collect subnet data from the results table
     const subnetData = [];
     const rows = resultsTable.querySelectorAll('tbody tr');
     rows.forEach((row, index) => {
         const cells = row.querySelectorAll('td');
         const neededSize = requestedHosts[index] || parseInt(cells[7].textContent);
-        
+
         subnetData.push({
             name: cells[0].textContent,
             networkAddress: cells[1].textContent,
@@ -1289,26 +1291,26 @@ document.getElementById('export-template').addEventListener('click', () => {
             neededSize: neededSize
         });
     });
-    
+
     // Get VLAN configuration
     const startingVlan = parseInt(document.getElementById('starting-vlan').value) || 10;
     const vlanIncrement = parseInt(document.getElementById('vlan-increment').value) || 10;
     const baseNetwork = document.getElementById('network-ip').value.trim();
     const cidr = document.getElementById('cidr').value;
-    
+
     // ==================== SHEET 1: Branch 1 - IPv4 VLSM Documentation ====================
     const branch1Data = [];
-    
+
     // Title row
     branch1Data.push(['Branch 1 - IPv4 VLSM Documentation']);
     branch1Data.push(['']); // Empty row
-    
+
     // Network Administrator Name row
     branch1Data.push(['Network Administrator Name', '', '', '', '', '', '', '', '', '', 'Andrei Nico A. Samonte']);
-    
+
     // Base Network row
     branch1Data.push(['Base Network', '', '', '', '', '', '', '', '', '', baseNetwork]);
-    
+
     // Header row
     branch1Data.push([
         'Network Name',
@@ -1323,23 +1325,29 @@ document.getElementById('export-template').addEventListener('click', () => {
         'Broadcast Address',
         'Wildcard Mask'
     ]);
-    
+
     // Add data rows for each subnet
     subnetData.forEach((subnet, index) => {
         const neededSize = subnet.neededSize;
         const numSwitches = Math.ceil(neededSize / 24);
         const totalHosts = neededSize + numSwitches + 3;
-        const cidrMatch = subnet.networkAddress.match(/\/(\d+)/);
-        const subnetCidr = cidrMatch ? `/${cidrMatch[1]}` : '';
+
+        // Calculate CIDR based on totalHosts (Needed Size + Switch + Router)
+        // Need totalHosts + 2 (network + broadcast addresses)
+        const totalAddresses = totalHosts + 2;
+        const bitsNeeded = Math.ceil(Math.log2(totalAddresses));
+        const calculatedCidr = 32 - bitsNeeded;
+        const calculatedCidrNotation = `/${calculatedCidr}`;
+
         const networkAddr = subnet.networkAddress.split('/')[0];
-        
+
         branch1Data.push([
             subnet.name,
             neededSize,
             numSwitches,
             totalHosts,
             networkAddr,
-            subnetCidr,
+            calculatedCidrNotation,
             subnet.subnetMask,
             subnet.firstUsable,
             subnet.lastUsable,
@@ -1347,23 +1355,23 @@ document.getElementById('export-template').addEventListener('click', () => {
             subnet.wildcard
         ]);
     });
-    
+
     // Create Branch 1 worksheet
     const wsBranch1 = XLSX.utils.aoa_to_sheet(branch1Data);
-    
+
     // Set column widths for Branch 1
     wsBranch1['!cols'] = [
         { wch: 25 }, { wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
         { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 18 }
     ];
-    
+
     // Merge cells for title
     wsBranch1['!merges'] = [
         { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } },
         { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } },
         { s: { r: 3, c: 0 }, e: { r: 3, c: 9 } }
     ];
-    
+
     // Apply styling to Branch 1
     const rangeBranch1 = XLSX.utils.decode_range(wsBranch1['!ref']);
     for (let R = rangeBranch1.s.r; R <= rangeBranch1.e.r; ++R) {
@@ -1371,13 +1379,13 @@ document.getElementById('export-template').addEventListener('click', () => {
             const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
             if (!wsBranch1[cellAddress]) wsBranch1[cellAddress] = { t: 's', v: '' };
             if (!wsBranch1[cellAddress].s) wsBranch1[cellAddress].s = {};
-            
+
             wsBranch1[cellAddress].s.border = {
                 top: { style: 'thin' }, bottom: { style: 'thin' },
                 left: { style: 'thin' }, right: { style: 'thin' }
             };
             wsBranch1[cellAddress].s.alignment = { horizontal: 'center', vertical: 'center' };
-            
+
             if (R === 0) {
                 wsBranch1[cellAddress].s.fill = { fgColor: { rgb: 'D3D3D3' } };
                 wsBranch1[cellAddress].s.font = { bold: true, size: 14 };
@@ -1388,21 +1396,21 @@ document.getElementById('export-template').addEventListener('click', () => {
             }
         }
     }
-    
+
     // ==================== SHEET 2: VLSM ====================
     const vlsmData = [];
-    
+
     // Header row
     vlsmData.push([
         'Name', 'Vlan', 'Needed Size', 'Switch', 'Router', 'Total Host',
         'Network Address', 'Slash', 'Mask', 'Usable Range', '',
         'Broadcast', 'IPV6', 'IPV6 DEFAULT GATEWAY'
     ]);
-    
+
     // Get IPv6 data from the routers table
     const routersTable = document.getElementById('routers-table');
     const routerRows = routersTable ? routersTable.querySelectorAll('tbody tr') : [];
-    
+
     // Create a map of VLAN names to IPv6 addresses
     const ipv6Map = {};
     routerRows.forEach(row => {
@@ -1411,7 +1419,7 @@ document.getElementById('export-template').addEventListener('click', () => {
             const vlanName = cells[1].textContent.trim();
             const ipv6Address = cells[6].textContent.trim();
             const ipv6Gateway = cells[7].textContent.trim();
-            
+
             if (vlanName && ipv6Address) {
                 ipv6Map[vlanName] = {
                     address: ipv6Address,
@@ -1420,7 +1428,7 @@ document.getElementById('export-template').addEventListener('click', () => {
             }
         }
     });
-    
+
     // Add data rows
     subnetData.forEach((subnet, index) => {
         const vlanId = startingVlan + (index * vlanIncrement);
@@ -1428,34 +1436,39 @@ document.getElementById('export-template').addEventListener('click', () => {
         const numSwitches = Math.ceil(neededSize / 24);
         const numRouters = 3;
         const totalHosts = neededSize + numSwitches + numRouters;
-        
-        const cidrMatch = subnet.networkAddress.match(/\/(\d+)/);
-        const subnetCidr = cidrMatch ? `/${cidrMatch[1]}` : '';
+
+        // Calculate CIDR based on totalHosts (Needed Size + Switch + Router)
+        // Need totalHosts + 2 (network + broadcast addresses)
+        const totalAddresses = totalHosts + 2;
+        const bitsNeeded = Math.ceil(Math.log2(totalAddresses));
+        const calculatedCidr = 32 - bitsNeeded;
+        const calculatedCidrNotation = `/${calculatedCidr}`;
+
         const networkAddr = subnet.networkAddress.split('/')[0];
         const usableRange = `${subnet.firstUsable} - ${subnet.lastUsable}`;
-        
+
         // Get IPv6 from the map, or use empty string if not found
         const ipv6Data = ipv6Map[subnet.name] || { address: '', gateway: '' };
         const ipv6Addr = ipv6Data.address;
         const ipv6Gateway = ipv6Data.gateway;
-        
+
         vlsmData.push([
             subnet.name, vlanId, neededSize, numSwitches, numRouters, totalHosts,
-            networkAddr, subnetCidr, subnet.subnetMask, usableRange, '',
+            networkAddr, calculatedCidrNotation, subnet.subnetMask, usableRange, '',
             subnet.broadcast, ipv6Addr, ipv6Gateway
         ]);
     });
-    
+
     // Create VLSM worksheet
     const wsVLSM = XLSX.utils.aoa_to_sheet(vlsmData);
-    
+
     // Set column widths for VLSM
     wsVLSM['!cols'] = [
         { wch: 20 }, { wch: 8 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
         { wch: 18 }, { wch: 8 }, { wch: 18 }, { wch: 30 }, { wch: 2 },
         { wch: 18 }, { wch: 20 }, { wch: 25 }
     ];
-    
+
     // Apply styling to VLSM
     const rangeVLSM = XLSX.utils.decode_range(wsVLSM['!ref']);
     for (let R = rangeVLSM.s.r; R <= rangeVLSM.e.r; ++R) {
@@ -1463,24 +1476,24 @@ document.getElementById('export-template').addEventListener('click', () => {
             const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
             if (!wsVLSM[cellAddress]) wsVLSM[cellAddress] = { t: 's', v: '' };
             if (!wsVLSM[cellAddress].s) wsVLSM[cellAddress].s = {};
-            
+
             wsVLSM[cellAddress].s.border = {
                 top: { style: 'thin' }, bottom: { style: 'thin' },
                 left: { style: 'thin' }, right: { style: 'thin' }
             };
             wsVLSM[cellAddress].s.alignment = { horizontal: 'center', vertical: 'center' };
-            
+
             if (R === 0) {
                 wsVLSM[cellAddress].s.fill = { fgColor: { rgb: '4472C4' } };
                 wsVLSM[cellAddress].s.font = { bold: true, color: { rgb: 'FFFFFF' } };
             }
         }
     }
-    
+
     // Add worksheets to workbook
     XLSX.utils.book_append_sheet(wb, wsBranch1, 'Branch 1');
     XLSX.utils.book_append_sheet(wb, wsVLSM, 'VLSM');
-    
+
     // Save file
     XLSX.writeFile(wb, 'VLSM_Documentation.xlsx');
 });
