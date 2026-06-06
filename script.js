@@ -1039,44 +1039,43 @@ let ipv6Addresses = {};
 let dnsChanged = false;
 let settingsConfigured = false;
 
-// Function to generate IPv6 address based on VLAN ID
 function generateIPv6Address(vlanId, prefix, format) {
-    // Remove any trailing colons or slashes from prefix
     prefix = prefix.replace(/[:\/]+$/, '');
-
     if (format === 'vlan-pattern') {
-        // Format: FD00:10:10:10::1/64 (VLAN ID in decimal, repeated in pattern)
         return `${prefix}:${vlanId}:${vlanId}:${vlanId}::1/64`;
-    } else {
-        // Format: FD00::10:1/64 (Sequential)
+    } else if (format === 'sequential') {
         return `${prefix}::${vlanId}:1/64`;
+    } else if (format === 'vlan-single') {
+        return `${prefix}:${vlanId}::1/64`;
+    } else if (format === 'vlan-double') {
+        return `${prefix}:${vlanId}:${vlanId}::1/64`;
     }
 }
 
-// Function to generate IPv6 gateway address
 function generateIPv6Gateway(vlanId, prefix, format) {
     prefix = prefix.replace(/[:\/]+$/, '');
-
     if (format === 'vlan-pattern') {
-        // Gateway format: FD00:10:10:10::/64 (ends with :: not ::1)
         return `${prefix}:${vlanId}:${vlanId}:${vlanId}::/64`;
-    } else {
-        // Gateway format: FD00::10:/64 (Sequential)
+    } else if (format === 'sequential') {
         return `${prefix}::${vlanId}:/64`;
+    } else if (format === 'vlan-single') {
+        return `${prefix}:${vlanId}::/64`;
+    } else if (format === 'vlan-double') {
+        return `${prefix}:${vlanId}:${vlanId}::/64`;
     }
 }
 
-// Function to generate IPv6 address for end-users (starts from ::2)
 function generateUserIPv6Address(vlanId, userIndex, prefix, format) {
     prefix = prefix.replace(/[:\/]+$/, '');
-    const hostNumber = userIndex + 2; // Start from ::2 (::1 is the router)
-
+    const hostNumber = userIndex + 2;
     if (format === 'vlan-pattern') {
-        // Format: FD00:10:10:10::2/64, FD00:10:10:10::3/64, etc.
         return `${prefix}:${vlanId}:${vlanId}:${vlanId}::${hostNumber}/64`;
-    } else {
-        // Format: FD00::10:2/64, FD00::10:3/64, etc.
+    } else if (format === 'sequential') {
         return `${prefix}::${vlanId}:${hostNumber}/64`;
+    } else if (format === 'vlan-single') {
+        return `${prefix}:${vlanId}::${hostNumber}/64`;
+    } else if (format === 'vlan-double') {
+        return `${prefix}:${vlanId}:${vlanId}::${hostNumber}/64`;
     }
 }
 
